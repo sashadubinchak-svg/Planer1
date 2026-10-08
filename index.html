@@ -22,13 +22,7 @@ nav button.on{background:var(--btn);color:var(--btx)}
 small,.hint{color:var(--hint)}.hint{text-align:center;margin:20px 0}
 .str{color:#ffb400;font-size:13px}
 .pg{height:8px;background:var(--sec);border-radius:4px;margin:0 0 12px;overflow:hidden}.pg i{display:block;height:100%;background:#34c759}
-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px}
-th{color:var(--hint);font-weight:500;padding:4px 0}th small{display:block;font-size:11px}
-th:first-child,td:first-child{width:30%;text-align:left}
-td{text-align:center;padding:10px 0;border-top:1px solid var(--sec)}
-td:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:4px}
-.y{color:#34c759;font-weight:700}.x{color:#ff3b30;font-weight:700}.n{color:var(--hint)}th.td{color:var(--btn)}
-input,textarea,select{width:100%;padding:13px;border-radius:12px;border:1px solid var(--sec);background:var(--sec);color:var(--tx);font:inherit}
+input,textarea,select{width:100%;padding:13px;border-radius:12px;border:1px solid var(--sec);background:var(--sec);color:var(--tx);font:inherit;margin-bottom:6px}
 textarea{min-height:130px}
 .ch{display:flex;gap:6px;margin:10px 0}.ch button{flex:1;border:0;border-radius:10px;padding:10px 0;background:var(--sec);color:var(--tx)}
 .ch button.on{background:var(--btn);color:var(--btx)}
@@ -44,6 +38,8 @@ textarea{min-height:130px}
 .av{width:88px;height:88px;border-radius:50%;object-fit:cover;background:var(--btn);color:var(--btx);display:grid;place-items:center;font-size:34px;margin:0 auto 8px}
 .m{display:flex;justify-content:space-between;padding:13px 14px;background:var(--sec);border-radius:12px;margin-bottom:6px}.m.on{outline:2px solid var(--btn)}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}.g3 div{background:var(--sec);border-radius:12px;padding:10px 4px;text-align:center}.g3 b{display:block;font-size:17px}
+.y{color:#34c759;font-weight:700}.x{color:#ff3b30;font-weight:700}.n{color:var(--hint)}
+.red{color:#ff3b30}
 </style></head><body>
 <div id="app"></div>
 <nav>
@@ -56,16 +52,59 @@ textarea{min-height:130px}
 const tg=window.Telegram&&Telegram.WebApp;if(tg){tg.ready();tg.expand()}
 const tgu=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
 const cloud=!!(tg&&tg.CloudStorage&&tg.isVersionAtLeast&&tg.isVersionAtLeast('6.9'));
+const alertM=m=>{try{if(tg&&tg.showAlert)return tg.showAlert(m)}catch(_){}alert(m)};
+// Своё окно подтверждения: нативный showConfirm в Telegram бывает недоступен или молча не срабатывает
+function ask(m,f){
+ const o=document.createElement('div');
+ o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;z-index:99;padding:20px';
+ o.innerHTML=`<div class="card" style="max-width:340px;width:100%;margin:0;background:var(--bg)"><p style="margin-top:0">${esc(m)}</p><div class="ch"><button id="an">Отмена</button><button id="ay" class="on">Да</button></div></div>`;
+ document.body.appendChild(o);
+ o.querySelector('#an').onclick=()=>o.remove();
+ o.querySelector('#ay').onclick=()=>{o.remove();f()};
+}
+const hap=()=>{if(tg&&tg.HapticFeedback)tg.HapticFeedback.impactOccurred('light')};
+
+// ---------- хранилище ----------
+// Лимит CloudStorage: 4096 символов на ключ. Большие списки режутся на части (lget/lset),
+// отчёты и отметки хранятся по неделям. Ошибки записи больше не молчат.
+const LIM=4096;let lastErr=0;
+const fail=()=>{if(Date.now()-lastErr>3000){lastErr=Date.now();alertM('Не удалось сохранить: превышен лимит хранилища или ошибка записи. Сделайте экспорт в профиле.')}};
 const S={
- get:k=>new Promise(r=>{if(cloud)tg.CloudStorage.getItem(k,(e,v)=>{try{r(v?JSON.parse(v):null)}catch(_){r(null)}});else{try{r(JSON.parse(localStorage.getItem(k)||'null'))}catch(_){r(null)}}}),
- set:(k,v)=>{const s=JSON.stringify(v);if(cloud)tg.CloudStorage.setItem(k,s);else{try{localStorage.setItem(k,s)}catch(_){}}},
- del:k=>{if(cloud)tg.CloudStorage.removeItem(k);else{try{localStorage.removeItem(k)}catch(_){}}}
+ raw:k=>new Promise(r=>{if(cloud)tg.CloudStorage.getItem(k,(e,v)=>r(e?null:(v||null)));else{try{r(localStorage.getItem(k))}catch(_){r(null)}}}),
+ get:async k=>{const v=await S.raw(k);if(!v)return null;try{return JSON.parse(v)}catch(_){return null}},
+ setRaw:(k,s)=>{
+  if(s.length>LIM){fail();return false}
+  if(cloud)tg.CloudStorage.setItem(k,s,(e,ok)=>{if(e||!ok)fail()});
+  else{try{localStorage.setItem(k,s)}catch(_){fail();return false}}
+  return true},
+ set:(k,v)=>S.setRaw(k,JSON.stringify(v)),
+ del:k=>{if(cloud)tg.CloudStorage.removeItem(k);else{try{localStorage.removeItem(k)}catch(_){}}},
+ keys:()=>new Promise(r=>{if(cloud)tg.CloudStorage.getKeys((e,a)=>r(e?[]:(a||[])));else{try{r(Object.keys(localStorage))}catch(_){r([])}}})
 };
-// Поля отчёта: [ключ, название, единица]. Можно менять.
-const F=[['dep','Депозиты','$'],['ref','Доливы','$'],['earn','Заработано','$'],['leads','Новых лидов',''],['msg','Контактов','']];
-// Ранги: [нужно XP, название]
+const MYKEY=/^(p|st|ph|tasks.*|goals.*|lx.*|l\d+|w[\d-]+|r[\d-]+)$/;
+const CN={};
+async function lget(n){
+ const c=await S.get(n+'_n');
+ if(c===null){CN[n]=0;return(await S.get(n))||[]} // старый формат: один ключ
+ CN[n]=c;let a=[];for(let i=0;i<c;i++)a=a.concat((await S.get(n+'_'+i))||[]);return a;
+}
+function lset(n,arr){
+ const ch=[];let cur=[],len=2;
+ for(const x of arr){const l=JSON.stringify(x).length+1;if(cur.length&&len+l>3500){ch.push(cur);cur=[];len=2}cur.push(x);len+=l}
+ ch.push(cur);
+ if(!CN[n])S.del(n);
+ ch.forEach((c,i)=>S.set(n+'_'+i,c));S.set(n+'_n',ch.length);
+ for(let i=ch.length;i<(CN[n]||0);i++)S.del(n+'_'+i);
+ CN[n]=ch.length;
+}
+
+// ---------- настройки ----------
+// Поля отчёта: [ключ, название, единица, авто]. авто=1 — считается само, вручную не вводится.
+const F=[['dep','Депозиты','$'],['ref','Доливы','$'],['earn','Заработано','$'],['leads','Новых лидов','',1],['msg','Контактов','']];
 const RK=[[0,'Новичок'],[100,'Стажёр'],[300,'Практик'],[600,'Профи'],[1000,'Мастер'],[1600,'Эксперт'],[2500,'Легенда']];
-const XP_TASK=10,XP_GOAL=25,XP_DEP=10,XP_REF=5; // XP за ★ задачи, ★ цели, 1 XP за каждые N$ депозитов / доливов
+// RESPEKT: за ★ задачи, за ★ цели, 1 респект за каждые N$ депозитов / доливов
+const RP_TASK=1,RP_GOAL=10,RP_DEP=50,RP_REF=25;
+const BACK=2; // сколько дней назад ещё можно отмечать задачи (будущие — нельзя)
 const LS=['Новый','В работе','Депнул','Отказ'];
 const WD=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 const $=s=>document.querySelector(s);
@@ -74,32 +113,52 @@ const wd=d=>(d.getDay()+6)%7;
 const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
 const mon=d=>add(d,-wd(d));
 const now=()=>{const d=new Date();d.setHours(12,0,0,0);return d};
+const D12=k=>new Date(k+'T12:00');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=n=>Math.round(n).toLocaleString('ru-RU');
-const dm=(k,o)=>new Date(k+'T12:00').toLocaleDateString('ru-RU',o);
+const dm=(k,o)=>D12(k).toLocaleDateString('ru-RU',o);
 const stars=n=>'★'.repeat(n)+'☆'.repeat(5-n);
-const alertM=m=>tg&&tg.showAlert?tg.showAlert(m):alert(m);
-const ask=(m,f)=>tg&&tg.showConfirm?tg.showConfirm(m,ok=>ok&&f()):(confirm(m)&&f());
-const hap=()=>{if(tg&&tg.HapticFeedback)tg.HapticFeedback.impactOccurred('light')};
+const dayDiff=(a,b)=>Math.round((D12(a)-D12(b))/864e5);
 
-let P={},ST={},PH=null,tasks=[],goals=[],leads=[],W={},R={},lead=null;
+let P={},ST={},PH=null,tasks=[],goals=[],leads=[],W={},R={},LEG={},lead=null;
 let tab='p',sub={t:'day',r:'rep'},cur=now(),ao=false,nm='',ns=3,sel=new Set();
 let gn='',gd='',gs=3,rd=iso(now()),rf=null,op=true,cm=now(),sm='week',so=now(),met='earn';
+let lq='',lf='';
 
 const seg=(k,a)=>`<div class="seg">${a.map(([v,l])=>`<button class="${sub[k]===v?'on':''}" onclick="sub.${k}='${v}';render()">${l}</button>`).join('')}</div>`;
 const picker=(v,fn)=>`<div class="ch">${[1,2,3,4,5].map(i=>`<button class="${i<=v?'on':''}" onclick="${fn}(${i})">★</button>`).join('')}</div>`;
 async function lw(m){if(!W[m])W[m]=(await S.get('w'+m))||{}}
-async function lr(m){if(!R[m])R[m]=(await S.get('r'+m))||{}}
+
+// ---------- отчёты по неделям (ключ r<понедельник>) ----------
+const wkOf=k=>iso(mon(D12(k)));
+const rep=k=>((R[wkOf(k)]||{})[k])||{};
+const leadsOn=k=>leads.filter(l=>l.cd===k).length;
+async function lrw(d){
+ const k=iso(mon(d));if(R[k])return;
+ let o=await S.get('r'+k);
+ if(!o){ // перенос из старого формата (один ключ на месяц)
+  o={};let ch=0;
+  for(let i=0;i<7;i++){const dd=iso(add(mon(d),i)),m=dd.slice(0,7);
+   if(LEG[m]===undefined)LEG[m]=(await S.get('r'+m))||null;
+   const x=LEG[m]&&LEG[m][dd];if(x){o[dd]=x;ch=1}}
+  if(ch)S.set('r'+k,o);
+ }
+ R[k]=o;
+}
+async function lrr(start,n){for(let d=mon(start);d<=add(start,n-1);d=add(d,7))await lrw(d)}
 
 // ---------- XP / ранг ----------
-const xp=()=>Math.max(0,ST.xt+ST.xg+Math.floor(ST.dep/XP_DEP+ST.ref/XP_REF));
+const xp=()=>Math.max(0,ST.xt+ST.xg+Math.floor(ST.dep/RP_DEP+ST.ref/RP_REF));
 function rank(){const x=xp();let i=0;while(i<RK.length-1&&x>=RK[i+1][0])i++;return{i,name:RK[i][1],x,lo:RK[i][0],nx:RK[i+1]?RK[i+1][0]:null}}
 
 // ---------- ЗАДАЧИ ----------
 async function vTasks(){return seg('t',[['day','Ежедневные'],['goal','Цели']])+(sub.t==='day'?await vDay():vGoals())}
 async function vDay(){
  const m=iso(mon(cur));await lw(m);
- const k=iso(cur),ds=W[m][k]||[],ts=tasks.filter(t=>t.d.includes(wd(cur))&&t.c<=k),n=ts.filter(t=>ds.includes(t.id)).length;
+ const k=iso(cur),ds=W[m][k]||[];
+ // архивные (удалённые) задачи остаются в днях до даты удаления
+ const ts=tasks.filter(t=>t.d.includes(wd(cur))&&t.c<=k&&(!t.e||k<t.e)),n=ts.filter(t=>ds.includes(t.id)).length;
+ const act=tasks.filter(t=>!t.e);
  let h=`<div class="nv"><button onclick="go(-1)">◀</button><b onclick="cur=now();render()">${cur.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})}</b><button onclick="go(1)">▶</button></div>`;
  if(ts.length)h+=`<div class="pg"><i style="width:${n/ts.length*100}%"></i></div>`;
  h+=ts.map(t=>{const on=ds.includes(t.id);return `<div class="r ${on?'ok':''}" onclick="tog(${t.id})"><div class="cb">${on?'✓':''}</div><span>${esc(t.t)}<br><span class="str">${stars(t.s||1)}</span></span></div>`}).join('')||'<div class="hint">На этот день задач нет.</div>';
@@ -109,7 +168,7 @@ async function vDay(){
  <div class="ch"><button onclick="pre([0,1,2,3,4,5,6])">Каждый день</button><button onclick="pre([0,1,2,3,4])">Будни</button><button onclick="pre([5,6])">Выходные</button></div>
  <small>Ценность задачи:</small>${picker(ns,'setNs')}
  <button class="go" onclick="addTask()">Добавить</button>`
- +tasks.map(t=>`<div class="r"><span>${esc(t.t)}<br><small>${t.d.map(i=>WD[i]).join(', ')}</small> <span class="str">${stars(t.s||1)}</span></span><button class="del" onclick="delTask(${t.id})">✕</button></div>`).join('');
+ +act.map(t=>`<div class="r"><span>${esc(t.t)}<br><small>${t.d.map(i=>WD[i]).join(', ')}</small> <span class="str">${stars(t.s||1)}</span></span><button class="del" onclick="delTask(${t.id})">✕</button></div>`).join('');
  return h;
 }
 function go(n){cur=add(cur,n);render()}
@@ -117,85 +176,115 @@ function ch(i){sel.has(i)?sel.delete(i):sel.add(i);render()}
 function pre(a){sel=new Set(a);render()}
 function setNs(i){ns=i;render()}
 function tog(id){
- const m=iso(mon(cur)),k=iso(cur),a=W[m][k]||[],i=a.indexOf(id),t=tasks.find(x=>x.id===id);
+ const T=iso(now()),k=iso(cur);
+ if(k>T)return alertM('Будущие дни отмечать нельзя');
+ if(dayDiff(T,k)>BACK)return alertM(`Задним числом можно отмечать только последние ${BACK} дн.`);
+ const m=iso(mon(cur)),a=W[m][k]||[],i=a.indexOf(id),t=tasks.find(x=>x.id===id);
  i<0?a.push(id):a.splice(i,1);W[m][k]=a;S.set('w'+m,W[m]);
- ST.xt+=(i<0?1:-1)*(t.s||1)*XP_TASK;S.set('st',ST);hap();render();
+ ST.xt+=(i<0?1:-1)*(t.s||1)*RP_TASK;S.set('st',ST);hap();render();
 }
 function addTask(){
  const t=nm.trim();if(!t||!sel.size)return alertM('Введите название и выберите дни');
  tasks.push({id:Date.now(),t:t.slice(0,40),d:[...sel].sort(),c:iso(now()),s:ns});
- S.set('tasks',tasks);nm='';sel=new Set();render();
+ lset('tasks',tasks);nm='';sel=new Set();render();
 }
-function delTask(id){ask('Удалить задачу?',()=>{tasks=tasks.filter(t=>t.id!==id);S.set('tasks',tasks);render()})}
+function delTask(id){ask('Удалить задачу? В прошлых днях она сохранится, респекты не сгорят.',()=>{
+ const t=tasks.find(x=>x.id===id);if(t)t.e=iso(now()); // архив с датой окончания
+ lset('tasks',tasks);render()})}
 
 function vGoals(){
- const T=iso(now()),L=[...goals].sort((a,b)=>a.done-b.done||a.dl.localeCompare(b.dl));
+ const L=[...goals].sort((a,b)=>a.done-b.done||a.dl.localeCompare(b.dl));
  return `<input placeholder="Новая цель" maxlength="60" value="${esc(gn)}" oninput="gn=this.value">
  <label class="fl">Срок выполнения</label><input type="date" value="${gd}" oninput="gd=this.value">
  <label class="fl">Ценность цели</label>${picker(gs,'setGs')}
  <button class="go" onclick="addGoal()">🎯 Добавить цель</button>`
- +(L.map(g=>{const d=Math.round((new Date(g.dl+'T12:00')-now())/864e5);
+ +(L.map(g=>{const d=Math.round((D12(g.dl)-now())/864e5);
   const info=g.done?'выполнено':d<0?`просрочено на ${-d} дн.`:d===0?'срок сегодня':`осталось ${d} дн.`;
-  return `<div class="r ${g.done?'ok':''}"><div class="cb" onclick="togGoal(${g.id})">${g.done?'✓':''}</div><span>${esc(g.t)}<br><small style="${!g.done&&d<0?'color:#ff3b30':''}">до ${dm(g.dl,{day:'numeric',month:'short'})} · ${info}</small> <span class="str">${stars(g.s)}</span></span><button class="del" onclick="delGoal(${g.id})">✕</button></div>`}).join('')||'<div class="hint">Целей пока нет.</div>');
+  return `<div class="r ${g.done?'ok':''}"><div class="cb" onclick="togGoal(${g.id})">${g.done?'✓':''}</div><span>${esc(g.t)}<br><small class="${!g.done&&d<0?'red':''}">до ${dm(g.dl,{day:'numeric',month:'short'})} · ${info}</small> <span class="str">${stars(g.s)}</span></span><button class="del" onclick="delGoal(${g.id})">✕</button></div>`}).join('')||'<div class="hint">Целей пока нет.</div>');
 }
 function setGs(i){gs=i;render()}
 function addGoal(){
  if(!gn.trim()||!gd)return alertM('Введите цель и срок');
- goals.push({id:Date.now(),t:gn.trim().slice(0,60),dl:gd,s:gs,done:0});S.set('goals',goals);gn='';gd='';render();
+ goals.push({id:Date.now(),t:gn.trim().slice(0,60),dl:gd,s:gs,done:0});lset('goals',goals);gn='';gd='';render();
 }
-function togGoal(id){const g=goals.find(x=>x.id===id);g.done=g.done?0:1;ST.xg+=(g.done?1:-1)*g.s*XP_GOAL;S.set('goals',goals);S.set('st',ST);hap();render()}
-function delGoal(id){ask('Удалить цель?',()=>{goals=goals.filter(g=>g.id!==id);S.set('goals',goals);render()})}
+function togGoal(id){const g=goals.find(x=>x.id===id);g.done=g.done?0:1;ST.xg+=(g.done?1:-1)*g.s*RP_GOAL;lset('goals',goals);S.set('st',ST);hap();render()}
+function delGoal(id){ask('Удалить цель?',()=>{
+ const g=goals.find(x=>x.id===id);
+ if(g&&g.done){ST.xg-=g.s*RP_GOAL;S.set('st',ST)} // респекты за выполненную цель возвращаются
+ goals=goals.filter(x=>x.id!==id);lset('goals',goals);render()})}
 
 // ---------- ОТЧЁТ ----------
 async function vReport(){return seg('r',[['rep','Отчёт'],['stat','Статистика']])+(sub.r==='rep'?await vRep():await vStats())}
 async function vRep(){
- const m=rd.slice(0,7),cmk=iso(cm).slice(0,7);await lr(m);await lr(cmk);
- if(!rf)rf=Object.assign({},R[m][rd]);
- let h=`<div class="card"><div class="nv" style="margin:0" onclick="op=!op;render()"><b style="text-transform:none">📝 Отчёт за ${dm(rd,{day:'numeric',month:'long'})}${rd===iso(now())?' (сегодня)':''}</b><span>${op?'▴':'▾'}</span></div>`;
- if(op)h+=F.map(([f,l,u])=>`<label class="fl">${l}${u?', '+u:''}</label><input type="number" inputmode="decimal" value="${rf[f]??''}" oninput="rf.${f}=this.value">`).join('')
+ const y=cm.getFullYear(),mo=cm.getMonth(),n=new Date(y,mo+1,0).getDate(),cmk=iso(cm).slice(0,7),T=iso(now());
+ await lrr(new Date(y,mo,1,12),n);await lrw(D12(rd));
+ if(!rf)rf=Object.assign({},rep(rd));
+ let h=`<div class="card"><div class="nv" style="margin:0" onclick="op=!op;render()"><b style="text-transform:none">📝 Отчёт за ${dm(rd,{day:'numeric',month:'long'})}${rd===T?' (сегодня)':''}</b><span>${op?'▴':'▾'}</span></div>`;
+ if(op)h+=F.filter(x=>!x[3]).map(([f,l,u])=>`<label class="fl">${l}${u?', '+u:''}</label><input type="number" inputmode="decimal" value="${rf[f]??''}" oninput="rf.${f}=this.value">`).join('')
+  +`<small>Новых лидов за день: <b>${(+rep(rd).leads||0)+leadsOn(rd)}</b> (считается по вкладке «Лиды»). Контакты можно добавлять кнопкой в карточке лида.</small>`
   +`<label class="fl">Заметка</label><input maxlength="80" value="${esc(rf.note||'')}" oninput="rf.note=this.value"><button class="go" onclick="saveRep()">💾 Сохранить</button>`;
  h+='</div>';
- const y=cm.getFullYear(),mo=cm.getMonth(),n=new Date(y,mo+1,0).getDate(),off=wd(new Date(y,mo,1)),D=R[cmk],T=iso(now());
+ const off=wd(new Date(y,mo,1,12));
  h+=`<div class="nv"><button onclick="cmv(-1)">◀</button><b>${cm.toLocaleDateString('ru-RU',{month:'long',year:'numeric'})}</b><button onclick="cmv(1)">▶</button></div><div class="cal">`
   +WD.map(w=>`<div class="h">${w}</div>`).join('')+'<div class="e"></div>'.repeat(off);
- for(let i=1;i<=n;i++){const k=cmk+'-'+String(i).padStart(2,'0');h+=`<div class="${D[k]?'has':''} ${k===rd?'sl':''} ${k===T?'tdy':''}" onclick="setRd('${k}')">${i}</div>`}
- h+='</div>'+(Object.keys(D).sort().reverse().map(k=>{const r=D[k];
-  return `<div class="card" onclick="setRd('${k}')"><b>${dm(k,{weekday:'short',day:'numeric',month:'long'})}</b><br><small>Заработано ${fmt(r.earn||0)} · Деп ${fmt(r.dep||0)} · Долив ${fmt(r.ref||0)}</small>${r.note?`<br><small>${esc(r.note)}</small>`:''}</div>`}).join('')||'<div class="hint">В этом месяце отчётов нет.</div>');
+ const ks=[];
+ for(let i=1;i<=n;i++){const k=cmk+'-'+String(i).padStart(2,'0'),has=Object.keys(rep(k)).length>0;if(has)ks.push(k);
+  h+=`<div class="${has?'has':''} ${k===rd?'sl':''} ${k===T?'tdy':''}" onclick="setRd('${k}')">${i}</div>`}
+ h+='</div>'+(ks.reverse().map(k=>{const r=rep(k);
+  return `<div class="card" onclick="setRd('${k}')"><b>${dm(k,{weekday:'short',day:'numeric',month:'long'})}</b><br><small>Заработано ${fmt(r.earn||0)} · Деп ${fmt(r.dep||0)} · Долив ${fmt(r.ref||0)} · Лидов ${(+r.leads||0)+leadsOn(k)} · Контактов ${fmt(r.msg||0)}</small>${r.note?`<br><small>${esc(r.note)}</small>`:''}</div>`}).join('')||'<div class="hint">В этом месяце отчётов нет.</div>');
  return h;
 }
 function cmv(n){cm=new Date(cm.getFullYear(),cm.getMonth()+n,15,12);render()}
 function setRd(k){rd=k;rf=null;op=true;scrollTo(0,0);render()}
-function saveRep(){
- const m=rd.slice(0,7),old=R[m][rd]||{},r={};
- F.forEach(([f])=>r[f]=+rf[f]||0);r.note=(rf.note||'').slice(0,80);
- R[m][rd]=r;S.set('r'+m,R[m]);
+async function saveRep(){
+ if(rd>iso(now()))return alertM('Отчёт за будущие дни заполнять нельзя');
+ await lrw(D12(rd));
+ const w=wkOf(rd),prev=R[w][rd],old=prev||{},r={};
+ F.forEach(([f,,,a])=>{r[f]=a?(old[f]||0):(+rf[f]||0)});
+ r.msg=+rf.msg||0;r.note=(rf.note||'').slice(0,80);
+ R[w][rd]=r;
+ if(!S.set('r'+w,R[w])){prev?R[w][rd]=prev:delete R[w][rd];return}
  ['dep','ref','earn'].forEach(f=>ST[f]+=r[f]-(old[f]||0));S.set('st',ST);
  op=false;hap();render();
 }
 async function vStats(){
+ const T=iso(now());
  const b=sm==='week'?mon(so):new Date(so.getFullYear(),so.getMonth(),1,12),n=sm==='week'?7:new Date(so.getFullYear(),so.getMonth()+1,0).getDate();
  const ds=[...Array(n)].map((_,i)=>add(b,i));
- for(const m of new Set(ds.map(d=>iso(d).slice(0,7))))await lr(m);
- const val=f=>ds.map(d=>((R[iso(d).slice(0,7)]||{})[iso(d)]||{})[f]||0);
+ await lrr(b,n);
+ const val=f=>ds.map(d=>{const k=iso(d);return(+rep(k)[f]||0)+(f==='leads'?leadsOn(k):0)});
+ const ne=ds.filter(d=>iso(d)<=T).length; // сколько дней периода уже наступило
  const cf=F.find(x=>x[0]===met)||F[0],v=val(cf[0]);
  const title=sm==='week'?dm(iso(ds[0]),{day:'numeric',month:'short'})+' – '+dm(iso(ds[n-1]),{day:'numeric',month:'short'}):so.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
  const step=Math.ceil(n/8),w=340,hh=160,p=24,mx=Math.max(0,...v,1),mn=Math.min(0,...v);
  const X=i=>p+(n>1?i*(w-2*p)/(n-1):0),Y=a=>hh-p-((a-mn)/(mx-mn))*(hh-2*p);
+ const vp=v.slice(0,ne);
  const svg=`<svg viewBox="0 0 ${w} ${hh}" style="width:100%"><line x1="${p}" x2="${w-p}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--hint)" opacity=".4"/>
- <polyline fill="none" stroke="var(--btn)" stroke-width="2.5" stroke-linejoin="round" points="${v.map((a,i)=>X(i)+','+Y(a)).join(' ')}"/>
- ${v.map((a,i)=>`<circle cx="${X(i)}" cy="${Y(a)}" r="${n>16?2:3.5}" fill="var(--btn)"/>`).join('')}
+ ${ne?`<polyline fill="none" stroke="var(--btn)" stroke-width="2.5" stroke-linejoin="round" points="${vp.map((a,i)=>X(i)+','+Y(a)).join(' ')}"/>`:''}
+ ${vp.map((a,i)=>`<circle cx="${X(i)}" cy="${Y(a)}" r="${n>16?2:3.5}" fill="var(--btn)"/>`).join('')}
  ${ds.map((d,i)=>i%step===0?`<text x="${X(i)}" y="${hh-6}" font-size="10" text-anchor="middle" fill="var(--hint)">${d.getDate()}</text>`:'').join('')}
  <text x="${p}" y="12" font-size="10" fill="var(--hint)">макс. ${fmt(mx)}</text></svg>`;
- const rows=F.map(([f,l,u])=>{const a=val(f),t=a.reduce((x,y)=>x+y,0),h1=a.slice(0,n>>1).reduce((x,y)=>x+y,0),h2=a.slice(n>>1).reduce((x,y)=>x+y,0);
-  const tr=h2>h1?'<span class="y">▲</span>':h2<h1?'<span class="x">▼</span>':'<span class="n">▬</span>';
+ // тренд: равные куски начала и конца уже прошедшей части периода
+ const rows=F.map(([f,l,u])=>{const a=val(f),t=a.reduce((x,y)=>x+y,0),q=Math.floor(ne/2);
+  const s1=a.slice(0,q).reduce((x,y)=>x+y,0),s2=q?a.slice(ne-q,ne).reduce((x,y)=>x+y,0):0;
+  const tr=!q?'<span class="n">▬</span>':s2>s1?'<span class="y">▲</span>':s2<s1?'<span class="x">▼</span>':'<span class="n">▬</span>';
   return `<div class="m ${f===cf[0]?'on':''}" onclick="met='${f}';scrollTo(0,0);render()"><span>${l}</span><span><b>${fmt(t)}${u?' '+u:''}</b> ${tr}</span></div>`}).join('');
  return `<div class="seg"><button class="${sm==='week'?'on':''}" onclick="sm='week';render()">Неделя</button><button class="${sm==='month'?'on':''}" onclick="sm='month';render()">Месяц</button></div>
  <div class="nv"><button onclick="sv(-1)">◀</button><b>${title}</b><button onclick="sv(1)">▶</button></div>
- <div class="card"><b>${cf[1]}</b> <small>по дням</small>${svg}</div><small>Итого за период (нажмите на строку, чтобы увидеть график):</small><div style="margin-top:8px">${rows}</div>`;
+ <div class="card"><b>${cf[1]}</b> <small>по дням</small>${svg}</div><small>Итого за период (нажмите на строку, чтобы увидеть график). Стрелка сравнивает начало и конец прошедшей части периода:</small><div style="margin-top:8px">${rows}</div>`;
 }
 function sv(n){so=sm==='week'?add(so,7*n):new Date(so.getFullYear(),so.getMonth()+n,15,12);render()}
 
 // ---------- ЛИДЫ ----------
+const overdue=l=>l.nx&&l.nx<=iso(now())&&(l.s==='Новый'||l.s==='В работе');
+function leadList(){
+ const q=lq.trim().toLowerCase();
+ const L=leads.filter(l=>(!lf||l.s===lf)&&(!q||(l.n||'').toLowerCase().includes(q)||(l.tg||'').toLowerCase().includes(q)))
+  .sort((a,b)=>overdue(b)-overdue(a));
+ return L.map(l=>`<div class="r" onclick="openLead(${l.id})"><span><b>${esc(l.n)}</b><br><small>${esc(l.s)}${l.tg?' · '+esc(l.tg):''}</small>${l.nx?` <small class="${overdue(l)?'red':''}">· связаться ${dm(l.nx,{day:'numeric',month:'short'})}</small>`:''}</span></div>`).join('')
+  ||`<div class="hint">${leads.length?'Ничего не найдено.':'Лидов пока нет.'}</div>`;
+}
+function setLf(s){lf=s;render()}
 function vLeads(){
  if(lead){const ex=leads.some(l=>l.id===lead.id);
   return `<div class="nv"><button onclick="lead=null;render()">◀ Назад</button><b>${ex?'Карточка':'Новый лид'}</b><span></span></div>
@@ -203,19 +292,31 @@ function vLeads(){
   <label class="fl">Telegram</label><input placeholder="@username" value="${esc(lead.tg)}" oninput="lead.tg=this.value">
   <label class="fl">Телефон / контакт</label><input value="${esc(lead.ph)}" oninput="lead.ph=this.value">
   <label class="fl">Статус</label><select onchange="lead.s=this.value">${LS.map(s=>`<option ${s===lead.s?'selected':''}>${s}</option>`).join('')}</select>
+  <label class="fl">Когда связаться в следующий раз</label><input type="date" value="${esc(lead.nx||'')}" oninput="lead.nx=this.value">
+  ${ex?`<div class="card" style="margin-top:10px"><small>Контактов: <b>${lead.cc||0}</b>${lead.lc?' · последний '+dm(lead.lc,{day:'numeric',month:'short'}):''}</small><button class="go" style="margin:8px 0 0" onclick="logContact()">📞 Был контакт сегодня (+1 в отчёт)</button></div>`:''}
   <label class="fl">Заметки</label><textarea maxlength="1500" oninput="lead.note=this.value">${esc(lead.note)}</textarea>
   <button class="go" onclick="saveLead()">💾 Сохранить</button>`+(ex?`<button class="go" style="background:#ff3b30" onclick="delLead()">Удалить</button>`:'');}
- return `<button class="go" style="margin-top:0" onclick="lead={id:Date.now(),n:'',tg:'',ph:'',s:'Новый',note:''};render()">➕ Новый лид</button>`
-  +(leads.map(l=>`<div class="r" onclick="openLead(${l.id})"><span><b>${esc(l.n)}</b><br><small>${esc(l.s)}</small></span></div>`).join('')||'<div class="hint">Лидов пока нет.</div>');
+ return `<button class="go" style="margin-top:0" onclick="lead={id:Date.now(),n:'',tg:'',ph:'',s:'Новый',nx:'',lc:'',cc:0,note:''};render()">➕ Новый лид</button>
+ <input placeholder="Поиск по имени или Telegram" value="${esc(lq)}" oninput="lq=this.value;$('#ll').innerHTML=leadList()">
+ <div class="ch">${['',...LS].map(s=>`<button style="font-size:12px;padding:8px 0" class="${lf===s?'on':''}" onclick="setLf('${s}')">${s||'Все'}</button>`).join('')}</div>
+ <div id="ll">${leadList()}</div>`;
 }
-async function openLead(id){lead=Object.assign({id,n:'',tg:'',ph:'',s:'Новый',note:''},await S.get('l'+id));render()}
+async function openLead(id){lead=Object.assign({id,n:'',tg:'',ph:'',s:'Новый',nx:'',lc:'',cc:0,note:''},await S.get('l'+id));render()}
 function saveLead(){
  if(!lead.n.trim())return alertM('Введите имя');
- const {id,...d}=lead;S.set('l'+id,d);
- const e={id,n:lead.n.trim().slice(0,40),s:lead.s},i=leads.findIndex(l=>l.id===id);
- i<0?leads.unshift(e):leads[i]=e;S.set('lx',leads);lead=null;hap();render();
+ const {id,...d}=lead,old=leads.find(l=>l.id===id);
+ if(!S.set('l'+id,d))return;
+ const e={id,n:lead.n.trim().slice(0,40),s:lead.s,tg:(lead.tg||'').trim().slice(0,32),cd:old?old.cd:iso(now()),nx:lead.nx||''};
+ const i=leads.findIndex(l=>l.id===id);
+ i<0?leads.unshift(e):leads[i]=e;lset('lx',leads);lead=null;hap();render();
 }
-function delLead(){ask('Удалить лида?',()=>{S.del('l'+lead.id);leads=leads.filter(l=>l.id!==lead.id);S.set('lx',leads);lead=null;render()})}
+async function logContact(){
+ const t=now(),k=iso(t),w=iso(mon(t));await lrw(t);
+ const o=R[w][k]||{};o.msg=(+o.msg||0)+1;R[w][k]=o;S.set('r'+w,R[w]);
+ lead.lc=k;lead.cc=(lead.cc||0)+1;const {id,...d}=lead;S.set('l'+id,d);
+ hap();render();
+}
+function delLead(){ask('Удалить лида?',()=>{S.del('l'+lead.id);leads=leads.filter(l=>l.id!==lead.id);lset('lx',leads);lead=null;render()})}
 
 // ---------- ПРОФИЛЬ ----------
 function vProf(){
@@ -224,30 +325,72 @@ function vProf(){
  ${src?`<img class="av" src="${esc(src)}" onclick="$('#fi').click()">`:`<div class="av" onclick="$('#fi').click()">${esc((P.n||'?')[0].toUpperCase())}</div>`}
  <div style="text-align:center;margin-bottom:12px"><b style="font-size:20px">${esc(P.n||'Без имени')}</b><br><small>${esc(P.team||'')} ${esc(P.tg||'')}</small></div>
  <div class="card"><div class="nv" style="margin:0 0 8px"><b>🏅 ${k.name}</b><small>Ранг ${k.i+1}</small></div><div class="pg" style="margin:0"><i style="width:${pr}%"></i></div>
- <small>${fmt(k.x)} XP${k.nx?` · до «${RK[k.i+1][1]}»: ${fmt(k.nx-k.x)} XP`:' · максимальный ранг'}</small></div>
+ <small>${fmt(k.x)} RESPEKT${k.nx?` · до «${RK[k.i+1][1]}»: ${fmt(k.nx-k.x)}`:' · максимальный ранг'}</small></div>
  <div class="g3"><div><small>Депозиты</small><b>${fmt(ST.dep)}</b></div><div><small>Доливы</small><b>${fmt(ST.ref)}</b></div><div><small>Заработано</small><b>${fmt(ST.earn)}</b></div></div>
  <label class="fl">Имя</label><input value="${esc(P.n||'')}" oninput="P.n=this.value">
  <label class="fl">Команда</label><input value="${esc(P.team||'')}" oninput="P.team=this.value">
  <label class="fl">Telegram</label><input placeholder="@username" value="${esc(P.tg||'')}" oninput="P.tg=this.value">
  <button class="go" onclick="S.set('p',P);hap();render()">💾 Сохранить профиль</button>
- <small>XP: задача ★×${XP_TASK}, цель ★×${XP_GOAL}, депозиты 1 XP за каждые ${XP_DEP}$, доливы 1 XP за каждые ${XP_REF}$. Нажмите на фото, чтобы сменить.</small>`;
+ <label class="fl">Резервная копия</label>
+ <button class="go" style="margin-top:0" onclick="expData()">📤 Экспорт данных</button>
+ <textarea id="bk" placeholder="Здесь появится копия данных. Для импорта вставьте сюда ранее сохранённый текст."></textarea>
+ <button class="go" style="background:var(--sec);color:var(--tx)" onclick="impData()">📥 Импорт из текста</button>
+ <small>RESPEKT: задача ★×${RP_TASK}, цель ★×${RP_GOAL}, депозиты 1 за каждые ${RP_DEP}$, доливы 1 за каждые ${RP_REF}$. Задачи можно отмечать за сегодня и ${BACK} прошлых дн., будущие дни нельзя. Нажмите на фото, чтобы сменить.</small>`;
 }
 function pickPh(f){
- if(!f)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=72;
-  const s=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,72,72);
-  PH=c.toDataURL('image/jpeg',.7);S.set('ph',PH);render()};im.src=URL.createObjectURL(f);
+ if(!f)return;const im=new Image();
+ im.onload=()=>{
+  const s=Math.min(im.width,im.height);let out=null;
+  for(const sz of [64,48,40]){
+   const c=document.createElement('canvas');c.width=c.height=sz;
+   c.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,sz,sz);
+   for(const q of [.7,.5,.3]){const u=c.toDataURL('image/jpeg',q);if(u.length<3800){out=u;break}}
+   if(out)break;
+  }
+  if(!out)return alertM('Фото слишком сложное для хранилища, выберите другое');
+  PH=out;S.set('ph',PH);render();
+ };
+ im.src=URL.createObjectURL(f);
+}
+async function expData(){
+ const ks=(await S.keys()).filter(k=>MYKEY.test(k)),o={};
+ for(const k of ks){const v=await S.raw(k);if(v!==null)o[k]=v}
+ const t=JSON.stringify(o),el=$('#bk');el.value=t;el.focus();el.select();
+ try{await navigator.clipboard.writeText(t);alertM('Скопировано в буфер обмена. Сохраните текст, например, в «Избранное».')}
+ catch(_){alertM('Текст выделен в поле ниже: скопируйте его и сохраните.')}
+}
+function impData(){
+ const el=$('#bk');let o;
+ try{o=JSON.parse(el.value)}catch(_){return alertM('Это не похоже на резервную копию')}
+ const ks=Object.keys(o||{});
+ if(!ks.length||ks.some(k=>!/^[A-Za-z0-9_-]{1,128}$/.test(k)||!MYKEY.test(k)||typeof o[k]!=='string'||o[k].length>LIM))return alertM('Файл копии повреждён или не подходит');
+ ask(`Импортировать ${ks.length} записей? Совпадающие данные будут перезаписаны.`,async()=>{
+  ks.forEach(k=>S.setRaw(k,o[k]));
+  await new Promise(r=>setTimeout(r,600));
+  await init();alertM('Импорт завершён');
+ });
 }
 
 // ---------- запуск ----------
+let rn=0;
 async function render(){
+ const my=++rn; // защита от наложения быстрых перерисовок
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
- $('#app').innerHTML=await({t:vTasks,r:vReport,l:vLeads,p:vProf}[tab])();
+ const html=await({t:vTasks,r:vReport,l:vLeads,p:vProf}[tab])();
+ if(my!==rn)return;
+ $('#app').innerHTML=html;
 }
-(async()=>{
- const a=await Promise.all(['p','st','tasks','goals','lx','ph'].map(k=>S.get(k)));
- P=a[0]||{};ST=Object.assign({dep:0,ref:0,earn:0,xt:0,xg:0},a[1]);tasks=a[2]||[];goals=a[3]||[];leads=a[4]||[];PH=a[5];
+async function init(){
+ R={};W={};LEG={};
+ const a=await Promise.all(['p','st','ph'].map(k=>S.get(k)));
+ P=a[0]||{};ST=Object.assign({dep:0,ref:0,earn:0,xt:0,xg:0},a[1]);PH=a[2];
+ if(!ST.v){ // перевод старых XP в новую, более скромную шкалу RESPEKT
+  ST.xt=Math.round(ST.xt/10);ST.xg=Math.round(ST.xg/2.5);ST.v=2;S.set('st',ST);
+ }
+ tasks=await lget('tasks');goals=await lget('goals');leads=await lget('lx');
  if(P.n===undefined)P.n=tgu.first_name||'';
  if(P.tg===undefined&&tgu.username)P.tg='@'+tgu.username;
  render();
-})();
+}
+init();
 </script></body></html>
