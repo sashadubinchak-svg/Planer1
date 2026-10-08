@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Дневник</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:var(--tg-theme-bg-color,#fff);--tx:var(--tg-theme-text-color,#111);--hint:var(--tg-theme-hint-color,#888);--btn:var(--tg-theme-button-color,#2481cc);--btx:var(--tg-theme-button-text-color,#fff);--sec:var(--tg-theme-secondary-bg-color,#f1f1f4)}
+*{box-sizing:border-box}
+body{margin:0;font:16px system-ui,sans-serif;background:var(--bg);color:var(--tx);padding:12px 12px 90px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--sec);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));gap:6px}
+nav button{flex:1;border:0;border-radius:10px;padding:11px 0;background:none;color:var(--hint);font-size:15px}
+nav button.on{background:var(--btn);color:var(--btx)}
+.nv{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.nv button,.sm{border:0;background:var(--sec);color:var(--tx);border-radius:10px;padding:8px 14px;font-size:16px}
+.nv b{text-transform:capitalize;text-align:center}
+.r{display:flex;align-items:center;gap:12px;background:var(--sec);border-radius:12px;padding:14px;margin-bottom:8px}
+.cb{width:26px;height:26px;border:2px solid var(--hint);border-radius:8px;display:grid;place-items:center;color:var(--btx);flex:none}
+.r.ok .cb{background:#34c759;border-color:#34c759}.r.ok span:last-child{opacity:.5;text-decoration:line-through}
+.hint{color:var(--hint);text-align:center;margin:20px 0}
+.pg{height:8px;background:var(--sec);border-radius:4px;margin:0 0 12px;overflow:hidden}.pg i{display:block;height:100%;background:#34c759}
+table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px}
+th{color:var(--hint);font-weight:500;padding:4px 0}th small{display:block;font-size:11px}
+th:first-child,td:first-child{width:30%;text-align:left}
+td{text-align:center;padding:10px 0;border-top:1px solid var(--sec)}
+td:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:4px}
+.y{color:#34c759;font-weight:700}.x{color:#ff3b30;font-weight:700}.n{color:var(--hint)}
+th.td{color:var(--btn)}
+input{width:100%;padding:13px;border-radius:12px;border:1px solid var(--sec);background:var(--sec);color:var(--tx);font-size:16px}
+.ch{display:flex;gap:6px;margin:12px 0}.ch button{flex:1;border:0;border-radius:10px;padding:10px 0;background:var(--sec);color:var(--tx)}
+.ch button.on{background:var(--btn);color:var(--btx)}
+.go{width:100%;border:0;border-radius:12px;padding:14px;background:var(--btn);color:var(--btx);font-size:16px;margin-bottom:18px}
+.del{margin-left:auto;border:0;background:none;color:#ff3b30;font-size:20px}
+</style></head><body>
+<div id="app"></div>
+<nav>
+<button data-t="day" onclick="tab='day';render()">📅 День</button>
+<button data-t="week" onclick="tab='week';render()">📊 Неделя</button>
+<button data-t="tasks" onclick="tab='tasks';render()">⚙️ Задачи</button>
+</nav>
+<script>
+const tg=window.Telegram&&Telegram.WebApp;
+if(tg){tg.ready();tg.expand();}
+const cloud=!!(tg&&tg.CloudStorage&&tg.isVersionAtLeast&&tg.isVersionAtLeast('6.9'));
+const S={
+ get:k=>new Promise(r=>{
+  if(cloud)tg.CloudStorage.getItem(k,(e,v)=>{try{r(v?JSON.parse(v):null)}catch(_){r(null)}});
+  else{try{r(JSON.parse(localStorage.getItem(k)||'null'))}catch(_){r(null)}}}),
+ set:(k,v)=>{const s=JSON.stringify(v);if(cloud)tg.CloudStorage.setItem(k,s);else{try{localStorage.setItem(k,s)}catch(_){}}}
+};
+const WD=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const wd=d=>(d.getDay()+6)%7;
+const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const mon=d=>add(d,-wd(d));
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const now=()=>{const d=new Date();d.setHours(12,0,0,0);return d};
+let tasks=[],cur=now(),tab='day',W={},sel=new Set(),nm='';
+
+async function render(){
+ const m=iso(mon(cur));
+ if(!W[m])W[m]=(await S.get('w'+m))||{};
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+ const A=document.getElementById('app'),T=iso(now());
+ if(tab==='day'){
+  const k=iso(cur),ds=W[m][k]||[],ts=tasks.filter(t=>t.d.includes(wd(cur))&&t.c<=k);
+  const n=ts.filter(t=>ds.includes(t.id)).length;
+  A.innerHTML=`<div class="nv"><button onclick="go(-1)">◀</button><b onclick="cur=now();render()">${cur.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})}</b><button onclick="go(1)">▶</button></div>`
+  +(ts.length?`<div class="pg"><i style="width:${n/ts.length*100}%"></i></div>`:'')
+  +(ts.map(t=>{const on=ds.includes(t.id);return `<div class="r ${on?'ok':''}" onclick="tog(${t.id})"><div class="cb">${on?'✓':''}</div><span>${esc(t.t)}</span></div>`}).join('')
+  ||'<div class="hint">На этот день задач нет.<br>Добавьте их во вкладке «Задачи».</div>');
+ }else if(tab==='week'){
+  const ds=[...Array(7)].map((_,i)=>add(mon(cur),i));let ok=0,pl=0;
+  const rows=tasks.map(t=>`<tr><td>${esc(t.t)}</td>`+ds.map(d=>{
+   const k=iso(d);
+   if(!t.d.includes(wd(d))||k<t.c)return '<td class="n">·</td>';
+   if((W[m][k]||[]).includes(t.id)){ok++;pl++;return '<td class="y">✓</td>'}
+   if(k<T){pl++;return '<td class="x">✗</td>'}
+   return '<td class="n">○</td>'}).join('')+'</tr>').join('');
+  A.innerHTML=`<div class="nv"><button onclick="go(-7)">◀</button><b>${ds[0].toLocaleDateString('ru-RU',{day:'numeric',month:'short'})} – ${ds[6].toLocaleDateString('ru-RU',{day:'numeric',month:'short'})}</b><button onclick="go(7)">▶</button></div>`
+  +(tasks.length?`<table><tr><th></th>${ds.map((d,i)=>`<th class="${iso(d)===T?'td':''}">${WD[i]}<small>${d.getDate()}</small></th>`).join('')}</tr>${rows}</table>
+  <p class="hint">✓ сделано · ✗ пропущено · ○ впереди · · не по плану<br><b style="color:var(--tx)">Итог: ${ok} из ${pl}${pl?' ('+Math.round(ok/pl*100)+'%)':''}</b></p>`
+  :'<div class="hint">Задач пока нет.</div>');
+ }else{
+  A.innerHTML=`<input id="nm" placeholder="Новая задача" value="${esc(nm)}" oninput="nm=this.value">
+  <div class="ch">${WD.map((w,i)=>`<button class="${sel.has(i)?'on':''}" onclick="ch(${i})">${w}</button>`).join('')}</div>
+  <div class="ch"><button onclick="pre([0,1,2,3,4,5,6])">Каждый день</button><button onclick="pre([0,1,2,3,4])">Будни</button><button onclick="pre([5,6])">Выходные</button></div>
+  <button class="go" onclick="addTask()">➕ Добавить задачу</button>`
+  +tasks.map(t=>`<div class="r"><span>${esc(t.t)}<br><small style="color:var(--hint)">${t.d.map(i=>WD[i]).join(', ')}</small></span><button class="del" onclick="delTask(${t.id})">✕</button></div>`).join('');
+ }
+}
+function go(n){cur=add(cur,n);render()}
+function ch(i){sel.has(i)?sel.delete(i):sel.add(i);render()}
+function pre(a){sel=new Set(a);render()}
+function tog(id){
+ const m=iso(mon(cur)),k=iso(cur),a=W[m][k]||[],i=a.indexOf(id);
+ i<0?a.push(id):a.splice(i,1);W[m][k]=a;S.set('w'+m,W[m]);
+ if(tg&&tg.HapticFeedback)tg.HapticFeedback.impactOccurred('light');
+ render();
+}
+function addTask(){
+ const t=nm.trim();
+ if(!t||!sel.size){const msg='Введите название и выберите дни';tg&&tg.showAlert?tg.showAlert(msg):alert(msg);return}
+ tasks.push({id:Date.now(),t:t.slice(0,40),d:[...sel].sort(),c:iso(now())});
+ S.set('tasks',tasks);nm='';sel=new Set();render();
+}
+function delTask(id){
+ const go=()=>{tasks=tasks.filter(t=>t.id!==id);S.set('tasks',tasks);render()};
+ tg&&tg.showConfirm?tg.showConfirm('Удалить задачу?',ok=>ok&&go()):(confirm('Удалить задачу?')&&go());
+}
+(async()=>{tasks=(await S.get('tasks'))||[];render()})();
+</script></body></html>
