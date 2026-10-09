@@ -3,50 +3,134 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Планер</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&subset=cyrillic" rel="stylesheet">
 <style>
-:root{--bg:var(--tg-theme-bg-color,#fff);--tx:var(--tg-theme-text-color,#111);--hint:var(--tg-theme-hint-color,#888);--btn:var(--tg-theme-button-color,#2481cc);--btx:var(--tg-theme-button-text-color,#fff);--sec:var(--tg-theme-secondary-bg-color,#f1f1f4)}
-*{box-sizing:border-box}
-body{margin:0;font:16px system-ui,sans-serif;background:var(--bg);color:var(--tx);padding:12px 12px 90px}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--sec);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));gap:4px}
-nav button{flex:1;border:0;border-radius:10px;padding:9px 0;background:none;color:var(--hint);font-size:12px}
-nav button.on{background:var(--btn);color:var(--btx)}
-.seg{display:flex;background:var(--sec);border-radius:12px;padding:3px;margin-bottom:12px}
-.seg button{flex:1;border:0;background:none;color:var(--hint);padding:9px 0;border-radius:10px;font-size:15px}
-.seg .on{background:var(--btn);color:var(--btx)}
-.nv{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.nv button,.sm{border:0;background:var(--sec);color:var(--tx);border-radius:10px;padding:8px 14px;font-size:16px}
-.nv b{text-transform:capitalize;text-align:center}
-.r{display:flex;align-items:center;gap:12px;background:var(--sec);border-radius:12px;padding:14px;margin-bottom:8px}
-.cb{width:26px;height:26px;border:2px solid var(--hint);border-radius:8px;display:grid;place-items:center;color:var(--btx);flex:none}
-.r.ok .cb{background:#34c759;border-color:#34c759}.r.ok span:nth-child(2){opacity:.5;text-decoration:line-through}
-small,.hint{color:var(--hint)}.hint{text-align:center;margin:20px 0}
-.str{color:#ffb400;font-size:13px}
-.pg{height:8px;background:var(--sec);border-radius:4px;margin:0 0 12px;overflow:hidden}.pg i{display:block;height:100%;background:#34c759}
-input,textarea,select{width:100%;padding:13px;border-radius:12px;border:1px solid var(--sec);background:var(--sec);color:var(--tx);font:inherit;margin-bottom:6px}
+:root{--bg:#f2f3f8;--card:#ffffff;--card2:#eceef5;--sec:#eceef5;--line:rgba(18,20,45,.1);--tx:#13152b;--hint:#6a6e86;--btn:#4256e0;--btx:#ffffff;--acc:#3347d1;--accbg:rgba(66,86,224,.1);--accline:rgba(66,86,224,.32);--ok:#16a870;--okbg:rgba(22,168,112,.08);--bad:#e0405a;--warn:#c98a10;--pl:rgba(18,20,45,.06);--pw:rgba(255,255,255,.2);--disp:Inter,system-ui,sans-serif;color-scheme:light}
+:root[data-theme=dark]{--bg:#0b0c11;--card:#13141b;--card2:#1b1c25;--sec:#1b1c25;--line:rgba(255,255,255,.08);--tx:#e8e9f1;--hint:#868aa0;--btn:#6d80ff;--btx:#ffffff;--acc:#a3b1ff;--accbg:rgba(109,128,255,.15);--accline:rgba(130,148,255,.38);--ok:#3ddc97;--okbg:rgba(61,220,151,.09);--bad:#ff6b7a;--warn:#f5b94a;--pl:rgba(255,255,255,.07);--pw:rgba(255,255,255,.16);color-scheme:dark}
+:root{--rings:repeating-radial-gradient(circle at 100% 0%,var(--pl) 0 1px,transparent 1px 13px);--hatch:repeating-linear-gradient(135deg,var(--pl) 0 1px,transparent 1px 8px);--dots:radial-gradient(var(--accline) 1px,transparent 1.3px) 0 0/7px 7px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{position:relative;margin:0;font:400 15px/1.4 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;background:var(--bg);color:var(--tx);padding:16px 16px 118px;min-height:100vh}
+button,input,select,textarea{font-family:inherit}
+button{cursor:pointer}
+[role=button]:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+/* иконки */
+.ic{display:inline-flex;width:1.15em;height:1.15em;vertical-align:-.22em;flex:none}
+.ic svg{width:100%;height:100%;display:block}
+/* шапка */
+.top{display:flex;align-items:center;justify-content:space-between;margin:0 2px 16px}
+.logo{font:700 20px Inter,system-ui,sans-serif;letter-spacing:-.02em}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 12px;font:600 12.5px Inter,system-ui,sans-serif}
+.chip .ic{color:var(--warn);width:16px;height:16px}
+/* нижняя панель: активная вкладка раскрывается с подписью */
+nav{position:fixed;left:14px;right:14px;bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:6px;background:var(--card);border:1px solid var(--line);border-radius:26px;box-shadow:0 10px 30px rgba(0,0,0,.28);z-index:20;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+nav button{flex:1 1 0;display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border:1px solid transparent;border-radius:20px;background:none;color:var(--hint);font:600 0/1 Inter,system-ui,sans-serif;transition:flex-grow .25s ease,background .2s}
+nav i{display:grid;place-items:center;font-style:normal}
+nav .ic{width:22px;height:22px}
+nav button.on{flex-grow:2.4;color:var(--tx);font-size:13px;background:radial-gradient(var(--pl) 1px,transparent 1.3px) 0 0/6px 6px,var(--card2);border-color:var(--line)}
+/* переключатели */
+.seg{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px;margin-bottom:14px}
+.seg button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid transparent;background:none;color:var(--hint);padding:10px 4px;border-radius:12px;font:600 13.5px Inter,system-ui,sans-serif}
+.seg .on{background:var(--hatch),var(--card2);color:var(--tx);border-color:var(--line)}
+.nv{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
+.nv button,.sm{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card2);color:var(--tx);border-radius:12px;padding:8px 13px;font:600 14px Inter,system-ui,sans-serif}
+.nv button:active,.sm:active,.ch button:active{transform:scale(.97)}
+.nv b{text-transform:capitalize;text-align:center;font-weight:600}
+/* строки и карточки */
+.r{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:8px}
+.r:active{background:var(--card2)}
+.cb{width:24px;height:24px;border:1.5px solid var(--hint);border-radius:8px;display:grid;place-items:center;color:#fff;flex:none}
+.cb .ic{width:16px;height:16px}.cb .ic svg{stroke-width:3}
+.r.ok{background:var(--okbg);border-color:rgba(61,220,151,.28)}
+.r.ok .cb{background:var(--ok);border-color:var(--ok)}
+.r.ok span:nth-child(2){opacity:.55;text-decoration:line-through}
+.cb.pop{animation:pop .35s ease-out}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+small,.hint{color:var(--hint)}.hint{text-align:center;margin:26px 0}
+.str{color:var(--warn);font-size:12px;letter-spacing:1px}
+.pg{height:8px;background:var(--card2);border-radius:6px;margin:0 0 14px;overflow:hidden}
+.pg i{display:block;height:100%;border-radius:6px;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.28) 0 5px,transparent 5px 10px),var(--ok)}
+.win{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--okbg);color:var(--ok);border:1px solid rgba(61,220,151,.32);border-radius:14px;padding:12px;font-weight:600;margin-bottom:12px;animation:pop .4s ease-out}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+.card .card{border-radius:14px}
+.fl{display:block;color:var(--hint);font-size:12.5px;font-weight:500;margin:12px 0 5px}
+/* поля ввода */
+input,textarea,select{width:100%;padding:12px 13px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:inherit;margin-bottom:6px}
+input:focus,textarea:focus,select:focus{outline:0;border-color:var(--accline);box-shadow:0 0 0 3px var(--accbg)}
+input:disabled{opacity:.55}
 textarea{min-height:130px}
-.ch{display:flex;gap:6px;margin:10px 0}.ch button{flex:1;border:0;border-radius:10px;padding:10px 0;background:var(--sec);color:var(--tx)}
-.ch button.on{background:var(--btn);color:var(--btx)}
-.go{width:100%;border:0;border-radius:12px;padding:14px;background:var(--btn);color:var(--btx);font-size:16px;margin:10px 0}
-.del{margin-left:auto;border:0;background:none;color:#ff3b30;font-size:20px}
-.card{background:var(--sec);border-radius:14px;padding:14px;margin-bottom:10px}
-.fl{display:block;color:var(--hint);font-size:13px;margin:10px 0 4px}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:12px}
-.cal div{padding:9px 0;border-radius:10px;background:var(--sec);position:relative;font-size:14px}
-.cal .h{background:none;color:var(--hint);font-size:12px;padding:2px}.cal .e{background:none}
-.cal .has::after{content:'';position:absolute;bottom:3px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#34c759}
-.cal .sl{outline:2px solid var(--btn)}.cal .tdy{color:var(--btn);font-weight:700}
-.av{width:88px;height:88px;border-radius:50%;object-fit:cover;background:var(--btn);color:var(--btx);display:grid;place-items:center;font-size:34px;margin:0 auto 8px}
-.m{display:flex;justify-content:space-between;padding:13px 14px;background:var(--sec);border-radius:12px;margin-bottom:6px}.m.on{outline:2px solid var(--btn)}
-.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}.g3 div{background:var(--sec);border-radius:12px;padding:10px 4px;text-align:center}.g3 b{display:block;font-size:17px}
-.y{color:#34c759;font-weight:700}.x{color:#ff3b30;font-weight:700}.n{color:var(--hint)}
-.red{color:#ff3b30}
+.ch{display:flex;gap:6px;margin:10px 0}
+.ch button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);border-radius:12px;padding:10px 0;background:var(--card2);color:var(--tx);font:500 14px Inter,system-ui,sans-serif}
+.ch button.on{background:var(--dots),var(--accbg);border-color:var(--accline);color:var(--acc);font-weight:600}
+.go{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:14px;padding:14px;background:repeating-linear-gradient(135deg,var(--pw) 0 1px,transparent 1px 7px),var(--btn);color:var(--btx);font:600 15.5px Inter,system-ui,sans-serif;margin:12px 0}
+.go:active{transform:scale(.985);filter:brightness(.92)}
+.del{display:inline-flex;align-items:center;margin-left:auto;border:0;background:none;color:var(--bad);padding:4px}
+.del .ic{width:18px;height:18px}
+/* календарь */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;text-align:center;margin-bottom:12px}
+.cal div{padding:9px 0;border-radius:10px;background:var(--card);border:1px solid var(--line);position:relative;font-size:14px;font-weight:500}
+.cal .h{background:none;border:0;color:var(--hint);font-size:12px;padding:2px}.cal .e{background:none;border:0}
+.cal .has::after{content:'';position:absolute;bottom:3px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--ok)}
+.cal .miss{background:rgba(255,107,122,.14);color:var(--bad);border-color:rgba(255,107,122,.3)}
+.cal .ok{background:var(--accbg);color:var(--acc);border-color:var(--accline)}
+.cal .late{background:rgba(245,185,74,.16);color:var(--warn);border-color:rgba(245,185,74,.35)}
+.cal .sl{outline:2px solid var(--acc);outline-offset:1px}
+.cal .tdy{background:var(--btn);color:#fff;border-color:transparent;font-weight:700}
+/* профиль */
+.av{width:92px;height:92px;border-radius:50%;object-fit:cover;background:var(--accbg);color:var(--acc);display:grid;place-items:center;font:700 34px Inter,system-ui,sans-serif;margin:6px auto 10px;border:1px solid var(--accline)}
+.m{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:8px}
+.m.on{background:var(--dots),var(--accbg);border-color:var(--accline)}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.g3 div{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:11px 4px;text-align:center}
+.g3 b{display:block;font:700 17px Inter,system-ui,sans-serif;margin-top:2px}
+.g3 small,.bs small{display:block;text-transform:uppercase;letter-spacing:.06em;font-size:10.5px;font-weight:600}
+.y{color:var(--ok);font-weight:700}.x{color:var(--bad);font-weight:700}.n{color:var(--hint)}
+.red{color:var(--bad)}
+/* плитки депозитов */
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.dt{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:5px;min-height:112px;background:var(--rings),var(--card)}
+.dt.d1{background:var(--rings),linear-gradient(155deg,rgba(61,220,151,.17),transparent 62%),var(--card);border-color:rgba(61,220,151,.28)}
+.dt.d2{background:var(--rings),linear-gradient(155deg,rgba(109,128,255,.2),transparent 62%),var(--card);border-color:var(--accline)}
+.dt b{font:700 22px/1.15 Inter,system-ui,sans-serif;position:relative}
+.dt .t{position:relative;font-size:12px;color:var(--hint);font-weight:500}
+.dt .em+.t{display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:600}
+.dt .em+.t .ic{width:15px;height:15px;color:var(--tx)}
+.dt .em{position:absolute;right:8px;bottom:6px;color:var(--tx);opacity:.13}
+.dt .em .ic{width:66px;height:66px}.dt .em svg{stroke-width:1.1}
+.dt:active{background-color:var(--card2)}
+/* переключатель темы, кнопки профиля */
+.th{position:absolute;top:16px;right:16px;width:54px;height:30px;border-radius:15px;background:var(--card2);border:1px solid var(--line);z-index:5}
+.th i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--btn);color:#fff;display:grid;place-items:center;font-style:normal;transition:transform .25s}
+.th i .ic{width:13px;height:13px}
+.th.dk i{transform:translateX(24px)}
+.ed{position:absolute;top:16px;left:16px;font-size:12px!important;padding:7px 10px!important;z-index:5}
+.tro{position:absolute;top:16px;right:80px;z-index:5;padding:0!important;width:38px;height:30px}
+.tro .ic{color:var(--warn);width:17px;height:17px}
+/* лучший месяц */
+.best{position:relative;overflow:hidden;background:var(--rings),linear-gradient(160deg,rgba(245,185,74,.2),transparent 68%),var(--card);border:1px solid rgba(245,185,74,.38);border-radius:20px;padding:18px;margin-bottom:14px;text-align:center}
+.best .em{position:absolute;right:-6px;top:-8px;color:var(--warn);opacity:.2}
+.best .em .ic{width:96px;height:96px}.best .em svg{stroke-width:1}
+.best .mo{font:600 16px Inter,system-ui,sans-serif;position:relative;text-transform:capitalize}
+.best .big{font:700 36px/1.15 Inter,system-ui,sans-serif;position:relative;margin:6px 0;letter-spacing:-.02em}
+.bs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;position:relative}
+.bs div{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:9px 2px}
+.bs b{display:block;font:700 16px Inter,system-ui,sans-serif}
+/* конверсия */
+.gauge{position:relative;width:156px;height:156px;margin:4px auto 10px}
+.gauge svg{display:block}
+.gauge .gc{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.gauge .gc b{font:700 34px/1 Inter,system-ui,sans-serif}.gauge .gc small{font-weight:600;margin-top:4px}
+.arc{animation:fillarc 1.1s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes fillarc{from{stroke-dashoffset:var(--c)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body>
 <div id="app"></div>
 <nav>
-<button data-t="t" onclick="tab='t';render()">📋<br>Задачи</button>
-<button data-t="r" onclick="tab='r';render()">📊<br>Отчёт</button>
-<button data-t="l" onclick="tab='l';lead=null;render()">👥<br>Лиды</button>
-<button data-t="p" onclick="tab='p';render()">👤<br>Профиль</button>
+<button data-t="t" aria-label="Задачи" onclick="tab='t';render()"><i>📋</i>Задачи</button>
+<button data-t="r" aria-label="Отчёт" onclick="tab='r';render()"><i>📊</i>Отчёт</button>
+<button data-t="l" aria-label="Лиды" onclick="tab='l';lead=null;render()"><i>👥</i>Лиды</button>
+<button data-t="p" aria-label="Профиль" onclick="tab='p';pv=null;render()"><i>👤</i>Профиль</button>
 </nav>
 <script>
 const tg=window.Telegram&&Telegram.WebApp;if(tg){tg.ready();tg.expand()}
@@ -58,11 +142,77 @@ function ask(m,f){
  const o=document.createElement('div');
  o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;z-index:99;padding:20px';
  o.innerHTML=`<div class="card" style="max-width:340px;width:100%;margin:0;background:var(--bg)"><p style="margin-top:0">${esc(m)}</p><div class="ch"><button id="an">Отмена</button><button id="ay" class="on">Да</button></div></div>`;
- document.body.appendChild(o);
+ document.body.appendChild(o);iconize(o);
  o.querySelector('#an').onclick=()=>o.remove();
  o.querySelector('#ay').onclick=()=>{o.remove();f()};
 }
 const hap=()=>{if(tg&&tg.HapticFeedback)tg.HapticFeedback.impactOccurred('light')};
+
+
+// ---------- иконки: эмодзи и символы автоматически заменяются на линейные SVG ----------
+const IC={
+tasks:'<rect x="5" y="4.5" width="14" height="16.5" rx="2.5"/><rect x="9" y="2.5" width="6" height="4" rx="1.2"/><path d="m9 13.5 2.2 2.2 4.3-4.7"/>',
+chart:'<path d="M4 20V11M10 20V5M16 20v-6M3 20h18"/>',
+users:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.600c2.400.2 4.200 1.900 4.200 4.400"/>',
+user:'<circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.600 3.100-6 7-6s7 2.400 7 6"/>',
+trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5v1.500A3 3 0 0 0 8 10.500M16 6h3v1.500a3 3 0 0 1-3 3"/><path d="M12 13v4M10 17h4M8.500 20h7"/>',
+save:'<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+x:'<path d="M6.500 6.500l11 11M17.500 6.500l-11 11"/>',
+chevL:'<path d="m14.500 6-6 6 6 6"/>',chevR:'<path d="m9.500 6 6 6-6 6"/>',
+up:'<path d="m6 14.500 6-6 6 6"/>',down:'<path d="m6 9.500 6 6 6-6"/>',
+wallet:'<path d="M4 8V7a2.500 2.500 0 0 1 2.500-2.500H17V8"/><rect x="4" y="8" width="16" height="11.500" rx="2.500"/><path d="M15.500 13.800h2.200"/>',
+image:'<rect x="4" y="5" width="16" height="14" rx="2.500"/><circle cx="9" cy="10" r="1.500"/><path d="m5 17 4.500-4.500 3 3L15 13l4 4"/>',
+pin:'<path d="M12 21s6.500-5.600 6.500-11a6.500 6.500 0 0 0-13 0c0 5.400 6.500 11 6.500 11z"/><circle cx="12" cy="10" r="2.200"/>',
+flame:'<path d="M12 21a6 6 0 0 0 6-6c0-3.500-2.500-5.500-3.500-8.500-2 1.200-3 3-3 5-1-.5-1.700-1.500-1.800-2.800C7.500 10 6 12 6 15a6 6 0 0 0 6 6z"/>',
+check:'<path d="m5 12.500 4.500 4.500L19 7.500"/>',
+doc:'<rect x="5" y="3.500" width="14" height="17" rx="2.500"/><path d="M8.500 9h7M8.500 13h7M8.500 17h4"/>',
+pencil:'<path d="M4.500 19.500 5.200 15.500 15.500 5.200a2.100 2.100 0 0 1 3 3L8.200 18.800z"/><path d="m14 6.700 3 3"/>',
+cal:'<rect x="4" y="5.500" width="16" height="14.500" rx="2.500"/><path d="M4 10h16M8.500 3.500v4M15.500 3.500v4"/>',
+lock:'<rect x="5.500" y="10.500" width="13" height="9.500" rx="2.500"/><path d="M8.500 10.500V8a3.500 3.500 0 0 1 7 0v2.500"/>',
+trend:'<path d="m4 16 5-5 4 3.500 7-8"/><path d="M15.500 6.500H20V11"/>',
+clock:'<circle cx="12" cy="12" r="8.500"/><path d="M12 7.500V12l3 2"/>',
+sliders:'<path d="M5 8h8M19 8h0M5 16h0M11 16h8"/><circle cx="16" cy="8" r="2.200"/><circle cx="8" cy="16" r="2.200"/>',
+hash:'<path d="M9 4 7.500 20M16.500 4 15 20M5 9h15M4 15h15"/>',
+text:'<path d="M4.500 18 9.500 6l5 12M6.500 14h6"/><path d="M16.500 12.500H20M18.200 12.500V18"/>',
+minus:'<path d="M6 12h12"/>',
+tri:'<path d="M12 6 5.500 16.500h13z" fill="currentColor"/>',triD:'<path d="M12 18 5.500 7.500h13z" fill="currentColor"/>',
+sprout:'<path d="M12 20v-8"/><path d="M12 12c0-3.500-2.500-5.500-6-5.500 0 3.500 2.500 5.500 6 5.500zM12 14c0-3 2.200-5 5.500-5 0 3-2.200 5-5.500 5z"/>',
+shield:'<path d="M12 3.500 5 6v6c0 4.200 3 7 7 8.500 4-1.500 7-4.300 7-8.500V6z"/>',
+bolt:'<path d="M13 3.500 6 13.500h5.500L11 20.500l7-10h-5.500z"/>',
+gem:'<path d="M7 5h10l3.500 4.500L12 20 3.500 9.500z"/><path d="M3.500 9.500h17M9 5l-1.500 4.500L12 20M15 5l1.500 4.500L12 20"/>',
+crown:'<path d="M4 17.500 3.500 8l4.500 4 4-6 4 6 4.500-4-.5 9.500z"/><path d="M4 20.500h16"/>',
+spark:'<path d="M12 3.500c.8 4.200 2.800 6.200 7 7-4.200.8-6.200 2.800-7 7-.8-4.200-2.800-6.200-7-7 4.200-.8 6.200-2.800 7-7z"/>',
+target:'<circle cx="12" cy="12" r="8.500"/><circle cx="12" cy="12" r="4.500"/><circle cx="12" cy="12" r="1"/>',
+camera:'<path d="M4 8.500A2.500 2.500 0 0 1 6.500 6H8l1.500-2h5L16 6h1.500A2.500 2.500 0 0 1 20 8.500v8a2.500 2.500 0 0 1-2.500 2.500h-11A2.500 2.500 0 0 1 4 16.500z"/><circle cx="12" cy="12.500" r="3.200"/>',
+checkC:'<circle cx="12" cy="12" r="8.500"/><path d="m8.500 12.500 2.500 2.500 4.500-5"/>',
+hourglass:'<path d="M7 3.500h10M7 20.500h10M8 3.500c0 4 4 5 4 8.500s-4 4.500-4 8.500M16 3.500c0 4-4 5-4 8.500s4 4.500 4 8.500"/>',
+folder:'<path d="M3.500 7A2.500 2.500 0 0 1 6 4.500h3.500l2 2.500H18a2.500 2.500 0 0 1 2.500 2.500v7A2.500 2.500 0 0 1 18 19H6a2.500 2.500 0 0 1-2.500-2.500z"/>',
+alert:'<path d="M12 4 3 19.500h18z"/><path d="M12 10v4.500M12 17.200v.1"/>',
+medal:'<circle cx="12" cy="14.500" r="5.500"/><path d="M8.500 3.500 10.500 10M15.500 3.500 13.500 10"/>',
+dot:'<circle cx="12" cy="12" r="2.200" fill="currentColor"/>',
+moon:'<path d="M19.500 14.500A7.500 7.500 0 0 1 9.500 4.500a7.500 7.500 0 1 0 10 10z"/>',
+sun:'<circle cx="12" cy="12" r="3.800"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.600 5.600 7 7M17 17l1.400 1.400M18.400 5.600 17 7M7 17l-1.400 1.400"/>',
+upload:'<path d="M12 15V4.500M7.500 9 12 4.500 16.500 9M5 15v3.500A1.500 1.500 0 0 0 6.500 20h11a1.500 1.500 0 0 0 1.500-1.500V15"/>',
+download:'<path d="M12 4.500V15M7.500 10.500 12 15l4.500-4.500M5 15v3.500A1.500 1.500 0 0 0 6.500 20h11a1.500 1.500 0 0 0 1.500-1.500V15"/>'
+};
+const IM={'📋':'tasks','📊':'chart','👥':'users','👤':'user','🏆':'trophy','💾':'save','➕':'plus','✕':'x','◀':'chevL','▶':'chevR','▴':'up','▾':'down','💰':'wallet','🖼':'image','📍':'pin','🔥':'flame','✓':'check','📝':'doc','✏':'pencil','📅':'cal','🔒':'lock','📈':'trend','⏱':'clock','⚙':'sliders','🔢':'hash','🔤':'text','▬':'minus','▲':'tri','▼':'triD','🌱':'sprout','🔰':'shield','⚡':'bolt','💎':'gem','👑':'crown','🦄':'spark','🎉':'spark','🎯':'target','📷':'camera','✅':'checkC','⏳':'hourglass','📂':'folder','⚠':'alert','🥈':'medal','🥉':'medal','🏅':'medal','▫':'dot','🌙':'moon','☀':'sun','📤':'upload','📥':'download'};
+const IRE=new RegExp('('+Object.keys(IM).join('|')+')\\uFE0F?','g');
+const svgI=n=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+function iconize(root){
+ if(!root)return;
+ const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),L=[];
+ while(w.nextNode())L.push(w.currentNode);
+ for(const t of L){
+  const p=t.parentNode,v=t.nodeValue;
+  if(!p||/^(OPTION|TEXTAREA|SCRIPT|STYLE|TITLE)$/.test(p.nodeName))continue;
+  IRE.lastIndex=0;if(!IRE.test(v))continue;
+  IRE.lastIndex=0;
+  const f=document.createDocumentFragment();let last=0,m;
+  while((m=IRE.exec(v))){f.append(v.slice(last,m.index));const sp=document.createElement('span');sp.className='ic';sp.innerHTML=svgI(IM[m[1]]);f.append(sp);last=IRE.lastIndex}
+  f.append(v.slice(last));p.replaceChild(f,t);
+ }
+}
 
 // ---------- хранилище ----------
 // Лимит CloudStorage: 4096 символов на ключ. Большие списки режутся на части (lget/lset),
@@ -78,10 +228,11 @@ const S={
   else{try{localStorage.setItem(k,s)}catch(_){fail();return false}}
   return true},
  set:(k,v)=>S.setRaw(k,JSON.stringify(v)),
+ setP:(k,s)=>new Promise(r=>{if(s.length>LIM)return r(false);if(cloud)tg.CloudStorage.setItem(k,s,(e,ok)=>r(!e&&!!ok));else{try{localStorage.setItem(k,s);r(true)}catch(_){r(false)}}}),
  del:k=>{if(cloud)tg.CloudStorage.removeItem(k);else{try{localStorage.removeItem(k)}catch(_){}}},
  keys:()=>new Promise(r=>{if(cloud)tg.CloudStorage.getKeys((e,a)=>r(e?[]:(a||[])));else{try{r(Object.keys(localStorage))}catch(_){r([])}}})
 };
-const MYKEY=/^(p|st|ph|tasks.*|goals.*|lx.*|l\d+|w[\d-]+|r[\d-]+)$/;
+const MYKEY=/^(p|st|ph|th|cf|lcf|sd|tasks.*|goals.*|lx.*|l\d+|ld\d+|l[km]\d+|w[\d-]+|r[\d-]+|f[abc]?[\d-]+|q[a-z0-9]+_\d+)$/;
 const CN={};
 async function lget(n){
  const c=await S.get(n+'_n');
@@ -92,20 +243,28 @@ function lset(n,arr){
  const ch=[];let cur=[],len=2;
  for(const x of arr){const l=JSON.stringify(x).length+1;if(cur.length&&len+l>3500){ch.push(cur);cur=[];len=2}cur.push(x);len+=l}
  ch.push(cur);
- if(!CN[n])S.del(n);
- ch.forEach((c,i)=>S.set(n+'_'+i,c));S.set(n+'_n',ch.length);
- for(let i=ch.length;i<(CN[n]||0);i++)S.del(n+'_'+i);
- CN[n]=ch.length;
+ const old=CN[n]||0;CN[n]=ch.length;
+ Promise.all(ch.map((c,i)=>S.setP(n+'_'+i,JSON.stringify(c)))).then(ok=>{
+  if(!ok.every(Boolean)){CN[n]=old;fail();return} // счётчик не трогаем, пока не записаны все части
+  S.set(n+'_n',ch.length);if(!old)S.del(n);
+  for(let i=ch.length;i<old;i++)S.del(n+'_'+i);
+ });
 }
 
 // ---------- настройки ----------
 // Поля отчёта: [ключ, название, единица, авто]. авто=1 — считается само, вручную не вводится.
-const F=[['dep','Депозиты','$'],['ref','Доливы','$'],['earn','Заработано','$'],['leads','Новых лидов','',1],['msg','Контактов','']];
+// Обязательные поля (авто=0) нужно заполнить при сохранении; 0 — допустимое значение.
+// Депозиты/доливы/заработано временно убраны из отчёта, но старые значения в данных сохраняются.
+const F=[['act','Активные лиды','',0],['qual','Качественные лиды','',0],['leads','Новых лидов','',1],['prob','Пробивы','',0],['offers','Предлоги','',0],['calls','Трубки','',0]];
+const MAXSH=5,PCH=4000,PMAX=32000; // скрины: максимум в отчёте, размер куска в ключе, максимум символов на фото
+const MAXCF=10; // максимум своих полей (ограничение размера записи недели)
 const RK=[[0,'Новичок'],[100,'Стажёр'],[300,'Практик'],[600,'Профи'],[1000,'Мастер'],[1600,'Эксперт'],[2500,'Легенда']];
-// RESPEKT: за ★ задачи, за ★ цели, 1 респект за каждые N$ депозитов / доливов
-const RP_TASK=1,RP_GOAL=10,RP_DEP=50,RP_REF=25;
+// RESPEKT: за ★ задачи и ★ цели
+const RE=['🌱','🔰','⚡','🔥','💎','👑','🦄']; // значки рангов
+const RP_TASK=1,RP_GOAL=10;
 const BACK=2; // сколько дней назад ещё можно отмечать задачи (будущие — нельзя)
-const LS=['Новый','В работе','Депнул','Отказ'];
+const LS=['В работе','В обработке','Депнул','Отказ']; // новый лид сразу «В работе», метка «новый» показывается только в день добавления
+const fixS=l=>{if(!LS.includes(l.s))l.s='В работе';return l};
 const WD=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 const $=s=>document.querySelector(s);
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -113,17 +272,36 @@ const wd=d=>(d.getDay()+6)%7;
 const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
 const mon=d=>add(d,-wd(d));
 const now=()=>{const d=new Date();d.setHours(12,0,0,0);return d};
+const GRACE=4; // до 4:00 «вчера» ещё считается вовремя
+const tdy=()=>{const d=new Date();if(d.getHours()<GRACE)d.setDate(d.getDate()-1);return iso(d)};
 const D12=k=>new Date(k+'T12:00');
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Math.round(n).toLocaleString('ru-RU');
 const dm=(k,o)=>D12(k).toLocaleDateString('ru-RU',o);
 const stars=n=>'★'.repeat(n)+'☆'.repeat(5-n);
+const nid=a=>{let i=Math.floor((Date.now()-17e11)/1000);while(a.some(x=>x.id===i))i++;return i}; // короткий числовой id
 const dayDiff=(a,b)=>Math.round((D12(a)-D12(b))/864e5);
 
+let TH=null; // тема: 'light' | 'dark' | null (как в Telegram)
+const curTh=()=>TH||((tg&&tg.colorScheme)||(window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));
+function applyTh(){
+ document.documentElement.dataset.theme=TH||curTh();
+ try{if(tg){const b=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();if(/^#[0-9a-f]{6}$/i.test(b)){tg.setHeaderColor(b);tg.setBackgroundColor(b)}}}catch(_){}
+}
+function toggleTheme(){TH=curTh()==='dark'?'light':'dark';S.set('th',TH);applyTh();hap();render()}
 let P={},ST={},PH=null,tasks=[],goals=[],leads=[],W={},R={},LEG={},lead=null;
-let tab='p',sub={t:'day',r:'rep'},cur=now(),ao=false,nm='',ns=3,sel=new Set();
-let gn='',gd='',gs=3,rd=iso(now()),rf=null,op=true,cm=now(),sm='week',so=now(),met='earn';
-let lq='',lf='';
+let lastTog=null;
+const hdr=()=>`<div class="top"><span class="logo">Планер</span><span class="chip">🏆 ${fmt(xp())} RESPEKT</span></div>`;
+let tab='t',sub={t:'day',r:'rep'},cur=now(),ao=false,nm='',ns=3,sel=new Set();
+let gn='',gd='',gs=3,rd=iso(now()),rf=null,op=true,cm=now(),sm='week',so=now(),met='act',smode='sum'; // smode: 'sum' общее / 'avg' среднее
+let wf=null,WH={},lq='',lf='',lsort='new',LCF=[],lcn='',lct='n',lcg='d',lt='g',lco=false,lxo=false,CF=[],cfn='',cft='n',cfo=false; // CF: [{id,n,t}], t: 'n' число / 't' текст
+let pv=null,pvd=null,DC=null,dfm={a:'',d:'',t:''},tfm={id:null,a:'',d:''}; // pv: null / 'dep' история / 'det' карточка депозита
+const usd=n=>'$'+(+n||0).toLocaleString('ru-RU',{maximumFractionDigits:2});
+const r2=x=>Math.round(x*100)/100;
+const resetDf=()=>{dfm={a:'',d:iso(new Date())};tfm={id:null,a:'',d:''}};
+const depSum=l=>{const q=l.dq||[0,0,0,0];return{ds:q[0],dn:q[1],ts:q[2],tn:q[3]}};
+const normDp=a=>(Array.isArray(a)?a:[]).filter(x=>x&&typeof x.a==='number'&&typeof x.d==='string').map(x=>({id:x.id,a:x.a,d:x.d,t:(Array.isArray(x.t)?x.t:[]).filter(y=>Array.isArray(y)&&typeof y[0]==='number'&&typeof y[1]==='string').map(y=>[y[0],y[1]])})); // время убрано; у старых записей оно отбрасывается
+const TXTMAX=20; // длина текстового значения (ограничение размера записи недели)
 
 const seg=(k,a)=>`<div class="seg">${a.map(([v,l])=>`<button class="${sub[k]===v?'on':''}" onclick="sub.${k}='${v}';render()">${l}</button>`).join('')}</div>`;
 const picker=(v,fn)=>`<div class="ch">${[1,2,3,4,5].map(i=>`<button class="${i<=v?'on':''}" onclick="${fn}(${i})">★</button>`).join('')}</div>`;
@@ -133,6 +311,11 @@ async function lw(m){if(!W[m])W[m]=(await S.get('w'+m))||{}}
 const wkOf=k=>iso(mon(D12(k)));
 const rep=k=>((R[wkOf(k)]||{})[k])||{};
 const leadsOn=k=>leads.filter(l=>l.cd===k).length;
+const nl=k=>Math.max(rep(k).lf||0,leadsOn(k)); // счётчик не уменьшается при удалении лида
+// День «сдан», если за него сохранён отчёт. Пропуск = прошедший день после первого отчёта без сохранённого отчёта.
+let SD=null; // дата первого отчёта: раньше неё пропусков нет
+const done=k=>Object.keys(rep(k)).length>0;
+const missed=k=>SD!==null&&k>SD&&k<tdy()&&!done(k);
 async function lrw(d){
  const k=iso(mon(d));if(R[k])return;
  let o=await S.get('r'+k);
@@ -144,11 +327,12 @@ async function lrw(d){
   if(ch)S.set('r'+k,o);
  }
  R[k]=o;
+ for(const dd of Object.keys(o))if(SD===null||dd<SD){SD=dd;S.set('sd',SD)}
 }
 async function lrr(start,n){for(let d=mon(start);d<=add(start,n-1);d=add(d,7))await lrw(d)}
 
 // ---------- XP / ранг ----------
-const xp=()=>Math.max(0,ST.xt+ST.xg+Math.floor(ST.dep/RP_DEP+ST.ref/RP_REF));
+const xp=()=>Math.max(0,ST.xt+ST.xg);
 function rank(){const x=xp();let i=0;while(i<RK.length-1&&x>=RK[i+1][0])i++;return{i,name:RK[i][1],x,lo:RK[i][0],nx:RK[i+1]?RK[i+1][0]:null}}
 
 // ---------- ЗАДАЧИ ----------
@@ -161,7 +345,8 @@ async function vDay(){
  const act=tasks.filter(t=>!t.e);
  let h=`<div class="nv"><button onclick="go(-1)">◀</button><b onclick="cur=now();render()">${cur.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})}</b><button onclick="go(1)">▶</button></div>`;
  if(ts.length)h+=`<div class="pg"><i style="width:${n/ts.length*100}%"></i></div>`;
- h+=ts.map(t=>{const on=ds.includes(t.id);return `<div class="r ${on?'ok':''}" onclick="tog(${t.id})"><div class="cb">${on?'✓':''}</div><span>${esc(t.t)}<br><span class="str">${stars(t.s||1)}</span></span></div>`}).join('')||'<div class="hint">На этот день задач нет.</div>';
+ if(ts.length&&n===ts.length)h+=`<div class="win">🎉 День закрыт! Все задачи выполнены</div>`;
+ h+=ts.map(t=>{const on=ds.includes(t.id);return `<div class="r ${on?'ok':''}" onclick="tog(${t.id})"><div class="cb ${on&&lastTog===t.id?'pop':''}">${on?'✓':''}</div><span>${esc(t.t)}<br><span class="str">${stars(t.s||1)}</span></span></div>`}).join('')||'<div class="hint">На этот день задач нет.</div>';
  h+=`<button class="go" onclick="ao=!ao;render()">${ao?'Скрыть':'➕ Новая задача / управление'}</button>`;
  if(ao)h+=`<input placeholder="Название задачи" value="${esc(nm)}" oninput="nm=this.value">
  <div class="ch">${WD.map((w,i)=>`<button class="${sel.has(i)?'on':''}" onclick="ch(${i})">${w}</button>`).join('')}</div>
@@ -181,11 +366,11 @@ function tog(id){
  if(dayDiff(T,k)>BACK)return alertM(`Задним числом можно отмечать только последние ${BACK} дн.`);
  const m=iso(mon(cur)),a=W[m][k]||[],i=a.indexOf(id),t=tasks.find(x=>x.id===id);
  i<0?a.push(id):a.splice(i,1);W[m][k]=a;S.set('w'+m,W[m]);
- ST.xt+=(i<0?1:-1)*(t.s||1)*RP_TASK;S.set('st',ST);hap();render();
+ ST.xt+=(i<0?1:-1)*(t.s||1)*RP_TASK;S.set('st',ST);lastTog=id;hap();render();
 }
 function addTask(){
  const t=nm.trim();if(!t||!sel.size)return alertM('Введите название и выберите дни');
- tasks.push({id:Date.now(),t:t.slice(0,40),d:[...sel].sort(),c:iso(now()),s:ns});
+ tasks.push({id:nid(tasks),t:t.slice(0,40),d:[...sel].sort(),c:iso(now()),s:ns});
  lset('tasks',tasks);nm='';sel=new Set();render();
 }
 function delTask(id){ask('Удалить задачу? В прошлых днях она сохранится, респекты не сгорят.',()=>{
@@ -205,46 +390,154 @@ function vGoals(){
 function setGs(i){gs=i;render()}
 function addGoal(){
  if(!gn.trim()||!gd)return alertM('Введите цель и срок');
- goals.push({id:Date.now(),t:gn.trim().slice(0,60),dl:gd,s:gs,done:0});lset('goals',goals);gn='';gd='';render();
+ goals.push({id:nid(goals),t:gn.trim().slice(0,60),dl:gd,s:gs,done:0});lset('goals',goals);gn='';gd='';render();
 }
 function togGoal(id){const g=goals.find(x=>x.id===id);g.done=g.done?0:1;ST.xg+=(g.done?1:-1)*g.s*RP_GOAL;lset('goals',goals);S.set('st',ST);hap();render()}
-function delGoal(id){ask('Удалить цель?',()=>{
+function delGoal(id){const g0=goals.find(x=>x.id===id);ask(g0&&g0.done?`Удалить цель? Респекты за её выполнение (${g0.s*RP_GOAL}) будут списаны.`:'Удалить цель?',()=>{
  const g=goals.find(x=>x.id===id);
  if(g&&g.done){ST.xg-=g.s*RP_GOAL;S.set('st',ST)} // респекты за выполненную цель возвращаются
  goals=goals.filter(x=>x.id!==id);lset('goals',goals);render()})}
 
 // ---------- ОТЧЁТ ----------
-async function vReport(){return seg('r',[['rep','Отчёт'],['stat','Статистика']])+(sub.r==='rep'?await vRep():await vStats())}
+async function vReport(){return seg('r',[['rep','📝 Ежедневный'],['wk',(isSun()?'📅':'🔒')+' Еженедельный'],['stat','📈 Статистика']])+(sub.r==='rep'?await vRep():sub.r==='wk'?await vWeekly():await vStats())}
 async function vRep(){
  const y=cm.getFullYear(),mo=cm.getMonth(),n=new Date(y,mo+1,0).getDate(),cmk=iso(cm).slice(0,7),T=iso(now());
  await lrr(new Date(y,mo,1,12),n);await lrw(D12(rd));
- if(!rf)rf=Object.assign({},rep(rd));
+ if(!rf)rf=Object.assign({},rep(rd),{x:Object.assign({},rep(rd).x),ph:[...(rep(rd).ph||[])],np:[],dp:[]});
  let h=`<div class="card"><div class="nv" style="margin:0" onclick="op=!op;render()"><b style="text-transform:none">📝 Отчёт за ${dm(rd,{day:'numeric',month:'long'})}${rd===T?' (сегодня)':''}</b><span>${op?'▴':'▾'}</span></div>`;
- if(op)h+=F.filter(x=>!x[3]).map(([f,l,u])=>`<label class="fl">${l}${u?', '+u:''}</label><input type="number" inputmode="decimal" value="${rf[f]??''}" oninput="rf.${f}=this.value">`).join('')
-  +`<small>Новых лидов за день: <b>${(+rep(rd).leads||0)+leadsOn(rd)}</b> (считается по вкладке «Лиды»). Контакты можно добавлять кнопкой в карточке лида.</small>`
-  +`<label class="fl">Заметка</label><input maxlength="80" value="${esc(rf.note||'')}" oninput="rf.note=this.value"><button class="go" onclick="saveRep()">💾 Сохранить</button>`;
+ if(op)h+=(rep(rd).late?'<small style="display:block;margin-top:8px;color:var(--warn)">⏱ Этот отчёт сдан не вовремя (задним числом)</small>':(!done(rd)&&rd<tdy()?'<small style="display:block;margin-top:8px;color:var(--warn)">⏱ Отчёт за прошедший день будет помечен как сданный не вовремя</small>':''))
+  +F.filter(x=>!x[3]).map(([f,l])=>rfInp(f,l,1)).join('')
+  +`<small>Новых лидов за день: <b>${(+rep(rd).leads||0)+nl(rd)}</b> (считается автоматически по вкладке «Лиды»).</small>`
+  +(CF.length?`<label class="fl" style="margin-top:14px">Свои поля</label>`+CF.map(c=>rfInp('x:'+c.id,c.n,0,c.t)).join(''):'')
+  +`<small><span class="red">*</span> — обязательные поля. Если было ноль, впишите 0.</small>`
+  +`<label class="fl">Заметка</label><input maxlength="80" value="${esc(rf.note||'')}" oninput="rf.note=this.value">${shotsBox()}<button class="go" onclick="saveRep()">💾 Сохранить</button>`
+  +`<button class="go" style="background:var(--sec);color:var(--tx);margin-top:0" onclick="cfo=!cfo;render()">⚙️ Свои поля ${cfo?'▴':'▾'}</button>`
+  +(cfo?cfBox():'');
  h+='</div>';
  const off=wd(new Date(y,mo,1,12));
  h+=`<div class="nv"><button onclick="cmv(-1)">◀</button><b>${cm.toLocaleDateString('ru-RU',{month:'long',year:'numeric'})}</b><button onclick="cmv(1)">▶</button></div><div class="cal">`
   +WD.map(w=>`<div class="h">${w}</div>`).join('')+'<div class="e"></div>'.repeat(off);
  const ks=[];
- for(let i=1;i<=n;i++){const k=cmk+'-'+String(i).padStart(2,'0'),has=Object.keys(rep(k)).length>0;if(has)ks.push(k);
-  h+=`<div class="${has?'has':''} ${k===rd?'sl':''} ${k===T?'tdy':''}" onclick="setRd('${k}')">${i}</div>`}
- h+='</div>'+(ks.reverse().map(k=>{const r=rep(k);
-  return `<div class="card" onclick="setRd('${k}')"><b>${dm(k,{weekday:'short',day:'numeric',month:'long'})}</b><br><small>Заработано ${fmt(r.earn||0)} · Деп ${fmt(r.dep||0)} · Долив ${fmt(r.ref||0)} · Лидов ${(+r.leads||0)+leadsOn(k)} · Контактов ${fmt(r.msg||0)}</small>${r.note?`<br><small>${esc(r.note)}</small>`:''}</div>`}).join('')||'<div class="hint">В этом месяце отчётов нет.</div>');
+ for(let i=1;i<=n;i++){const k=cmk+'-'+String(i).padStart(2,'0'),has=done(k);if(has)ks.push(k);
+  h+=`<div class="${has?'has':''} ${missed(k)?'miss':''} ${has&&rep(k).late?'late':''} ${has&&!rep(k).late?'ok':''} ${k===rd?'sl':''} ${k===T?'tdy':''}" onclick="setRd('${k}')">${i}</div>`}
+ h+='</div><small style="display:block;margin:-6px 0 10px">Красным отмечены дни, за которые отчёт не сдан, жёлтым — сдан не вовремя, бледно-синим — вовремя, ярко-синим — сегодня.</small>'+(ks.reverse().map(k=>{const r=rep(k);
+  return `<div class="card" style="${r.late?'border-left:4px solid var(--warn)':''}" onclick="setRd('${k}')"><b>${dm(k,{weekday:'short',day:'numeric',month:'long'})}</b>${r.late?' <small style="color:var(--warn)">· сдан не вовремя</small>':''}<br><small>Активных ${fmt(r.act||0)} · Качественных ${fmt(r.qual||0)} · Новых ${(+r.leads||0)+nl(k)} · Пробивов ${fmt(r.prob||0)} · Предлоги ${fmt(r.offers||0)} · Трубок ${fmt(r.calls||0)}${CF.filter(c=>(r.x||{})[c.id]).map(c=>' · '+esc(c.n)+' '+(c.t==='t'?esc(r.x[c.id]):fmt(r.x[c.id]))).join('')}</small>${r.note?`<br><small>${esc(r.note)}</small>`:''}${r.ph&&r.ph.length?`<br><button class="sm" style="margin-top:6px" onclick="event.stopPropagation();showShots('${k}')">🖼 Открыть скрины (${r.ph.length})</button>`:''}</div>`}).join('')||'<div class="hint">В этом месяце отчётов нет.</div>');
  return h;
+}
+// ---- поля отчёта: ввод и свои поля ----
+const rfVal=f=>f.startsWith('x:')?(rf.x||{})[f.slice(2)]:rf[f];
+function setRf(f,v){if(f.startsWith('x:')){rf.x=rf.x||{};rf.x[f.slice(2)]=v}else rf[f]=v}
+const rfInp=(f,l,req,t)=>`<label class="fl">${esc(l)}${req?' <span class="red">*</span>':''}</label>`
+ +(t==='t'?`<input type="text" maxlength="${TXTMAX}" value="${esc(rfVal(f)??'')}" oninput="setRf('${f}',this.value)">`
+ :`<input type="number" inputmode="numeric" min="0" value="${esc(rfVal(f)??'')}" oninput="setRf('${f}',this.value)">`);
+function setCft(t){cft=t;render()}
+function cfBox(){
+ return `<div class="card" style="margin-top:6px;background:var(--bg)"><b>Свои поля</b><br><small>Необязательные. Появятся в отчёте и в статистике (максимум ${MAXCF}).</small>
+ <input maxlength="24" placeholder="Название нового поля" value="${esc(cfn)}" oninput="cfn=this.value" style="margin-top:8px">
+ <div class="ch" style="margin:4px 0"><button class="${cft==='n'?'on':''}" onclick="setCft('n')">🔢 Число</button><button class="${cft==='t'?'on':''}" onclick="setCft('t')">🔤 Текст</button></div>
+ <button class="go" style="margin:4px 0 8px" onclick="addCf()">➕ Добавить поле</button>`
+ +(CF.map(c=>`<div class="r" style="background:var(--sec);padding:10px 14px"><span>${esc(c.n)} <small>· ${c.t==='t'?'текст':'число'}</small></span><button class="del" onclick="delCf('${c.id}')">✕</button></div>`).join('')||'<small>Своих полей пока нет.</small>')+`</div>`;
+}
+function addCf(){
+ const n=cfn.trim().slice(0,24);
+ if(!n)return alertM('Введите название поля');
+ if(CF.length>=MAXCF)return alertM('Максимум '+MAXCF+' своих полей');
+ if([...F.map(x=>x[1]),...CF.map(c=>c.n)].some(x=>x.toLowerCase()===n.toLowerCase()))return alertM('Такое поле уже есть');
+ let id;do{id=Math.random().toString(36).slice(2,6)}while(!id||CF.some(c=>c.id===id));
+ CF.push({id,n,t:cft});if(!S.set('cf',CF)){CF.pop();return}
+ cfn='';hap();render();
+}
+function delCf(id){ask('Удалить поле? Ранее введённые значения останутся в данных, но показываться не будут.',()=>{CF=CF.filter(c=>c.id!==id);S.set('cf',CF);render()})}
+// ---- скрины к дневному отчёту: фото сжимаются и режутся на куски по PCH символов (ключи q<id>_<i>) ----
+const newShotId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const delShotKeys=(id,n)=>{for(let i=0;i<n;i++)S.del('q'+id+'_'+i)};
+const shotsN=()=>(rf.ph||[]).length+(rf.np||[]).length;
+function shotsBox(){
+ const sv=(rep(rd).ph||[]).length;
+ return `<label class="fl">Скрины (до ${MAXSH})</label><input type="file" id="shf" accept="image/*" multiple hidden onchange="addShots(this.files)">`
+ +(rf.ph||[]).map((a,i)=>`<div class="r" style="padding:10px 14px"><span>🖼 Скрин ${i+1} <small>· сохранён</small></span><button class="del" onclick="delShot(${i})">✕</button></div>`).join('')
+ +(rf.np||[]).map((a,i)=>`<div class="r" style="padding:8px 14px"><img src="${esc(a.u)}" style="width:44px;height:44px;object-fit:cover;border-radius:8px"><span>Новый <small>· сохранится вместе с отчётом</small></span><button class="del" onclick="delNew(${i})">✕</button></div>`).join('')
+ +`<div class="ch"><button onclick="$('#shf').click()">📷 Из галереи (${shotsN()}/${MAXSH})</button><button onclick="pasteShot()">📋 Из буфера</button></div><small>Скопированное фото можно вставить кнопкой «Из буфера» или обычной вставкой (долгое нажатие → «Вставить», Ctrl+V).</small>`
+ +(sv?`<button class="go" style="background:var(--sec);color:var(--tx);margin:0 0 4px" onclick="showShots('${rd}')">🖼 Открыть скрины (${sv})</button>`:'');
+}
+function delShot(i){const e=rf.ph.splice(i,1)[0];if(e)rf.dp.push(e);render()}
+function delNew(i){rf.np.splice(i,1);render()}
+function compressShot(f){return new Promise(res=>{
+ const im=new Image();
+ im.onload=()=>{URL.revokeObjectURL(im.src);
+  for(const m of [640,540,450,380,320]){
+   const sc=Math.min(1,m/im.width),w=Math.max(1,Math.round(im.width*sc)),h=Math.max(1,Math.round(im.height*sc));
+   const c=document.createElement('canvas');c.width=w;c.height=h;
+   const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(im,0,0,w,h);
+   for(const q of [.5,.38,.28]){const u=c.toDataURL('image/jpeg',q);if(u.length<=PMAX)return res(u)}
+  }
+  res(null)};
+ im.onerror=()=>res(null);im.src=URL.createObjectURL(f);
+})}
+async function addShots(files){
+ let bad=0;
+ for(const f of [...files]){
+  if(shotsN()>=MAXSH){alertM('Максимум '+MAXSH+' скринов в отчёте');break}
+  const u=await compressShot(f);if(!u){bad++;continue}
+  rf.np.push({id:newShotId(),u});
+ }
+ if(bad)alertM('Не удалось сохранить фото ('+bad+'): оно слишком большое для хранилища даже после сжатия');
+ render();
+}
+async function pasteShot(){
+ try{
+  const fs=[];
+  for(const it of await navigator.clipboard.read()){const t=it.types.find(x=>x.startsWith('image/'));if(t)fs.push(new File([await it.getType(t)],'paste.'+t.split('/')[1],{type:t}))}
+  if(!fs.length)return alertM('В буфере обмена нет изображения');
+  addShots(fs);
+ }catch(_){alertM('Не удалось прочитать буфер обмена. Попробуйте обычную вставку (долгое нажатие → «Вставить») или выберите фото из галереи.')}
+}
+document.addEventListener('paste',e=>{ // обычная вставка фото (Ctrl+V / «Вставить»), когда открыта форма дневного отчёта
+ if(tab!=='r'||sub.r!=='rep'||!rf||!op)return;
+ const fs=[...((e.clipboardData&&e.clipboardData.files)||[])].filter(f=>f.type.startsWith('image/'));
+ if(fs.length){e.preventDefault();addShots(fs)}
+});
+async function showShots(k){
+ const ph=rep(k).ph||[];if(!ph.length)return;
+ const o=document.createElement('div');
+ o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:98;overflow:auto;padding:12px';
+ o.innerHTML='<button class="go" id="sx" style="margin-top:0;position:sticky;top:0">✕ Закрыть</button><div id="sb" style="color:#fff;text-align:center">Загрузка…</div>';
+ document.body.appendChild(o);iconize(o);o.querySelector('#sx').onclick=()=>o.remove();
+ const box=o.querySelector('#sb');box.innerHTML='';
+ for(const [id,n] of ph){
+  let u='';for(let i=0;i<n;i++)u+=(await S.raw('q'+id+'_'+i))||'';
+  box.insertAdjacentHTML('beforeend',u.startsWith('data:image/')?`<img src="${esc(u)}" style="width:100%;border-radius:10px;margin-top:10px;display:block">`:'<div class="card" style="margin-top:10px">Скрин не найден</div>');
+ }
 }
 function cmv(n){cm=new Date(cm.getFullYear(),cm.getMonth()+n,15,12);render()}
 function setRd(k){rd=k;rf=null;op=true;scrollTo(0,0);render()}
 async function saveRep(){
  if(rd>iso(now()))return alertM('Отчёт за будущие дни заполнять нельзя');
  await lrw(D12(rd));
- const w=wkOf(rd),prev=R[w][rd],old=prev||{},r={};
- F.forEach(([f,,,a])=>{r[f]=a?(old[f]||0):(+rf[f]||0)});
- r.msg=+rf.msg||0;r.note=(rf.note||'').slice(0,80);
+ const empty=v=>v===undefined||v===null||String(v).trim()==='';
+ const miss=F.filter(([f,,,a])=>!a&&empty(rf[f])).map(x=>x[1]);
+ if(miss.length)return alertM('Заполните обязательные поля: '+miss.join(', '));
+ const w=wkOf(rd),prev=R[w][rd],old=prev||{};
+ const r=Object.assign({},old); // старые значения (в т.ч. депозиты/доливы) не теряем
+ F.forEach(([f,,,a])=>{if(!a)r[f]=Math.max(0,+rf[f]||0)});
+ const x=Object.assign({},old.x);
+ CF.forEach(c=>{const v=(rf.x||{})[c.id];if(empty(v))delete x[c.id];else x[c.id]=c.t==='t'?String(v).trim().slice(0,TXTMAX):Math.max(0,+v||0)});
+ if(Object.keys(x).length)r.x=x;else delete r.x;
+ r.note=(rf.note||'').slice(0,80);
+ const lf0=Math.max(r.lf||0,leadsOn(rd));if(lf0)r.lf=lf0;
+ const chs=(rf.np||[]).map(a=>{const c=[];for(let i=0;i<a.u.length;i+=PCH)c.push(a.u.slice(i,i+PCH));return[a.id,c]});
+ const need=chs.reduce((t,[,c])=>t+c.length,0);
+ if(need&&(await S.keys()).length+need>1000)return alertM('Не хватает места в хранилище для скринов (лимит ключей). Удалите старые скрины или сделайте экспорт.');
+ const ph2=(rf.ph||[]).concat(chs.map(([id,c])=>[id,c.length]));
+ if(ph2.length)r.ph=ph2;else delete r.ph;
+ const undoShots=()=>chs.forEach(([id,c])=>delShotKeys(id,c.length));
+ let okc=true;chs.forEach(([id,c])=>c.forEach((t,i)=>{if(!S.setRaw('q'+id+'_'+i,t))okc=false}));
+ if(!okc){undoShots();return alertM('Не удалось сохранить скрины')}
+ if(!prev&&rd<tdy())r.late=1; // первый раз сохранён после окончания дня = сдан не вовремя (метка остаётся)
  R[w][rd]=r;
- if(!S.set('r'+w,R[w])){prev?R[w][rd]=prev:delete R[w][rd];return}
- ['dep','ref','earn'].forEach(f=>ST[f]+=r[f]-(old[f]||0));S.set('st',ST);
+ if(!S.set('r'+w,R[w])){prev?R[w][rd]=prev:delete R[w][rd];undoShots();return}
+ (rf.dp||[]).forEach(([id,n])=>delShotKeys(id,n));rf=null;
+ if(SD===null||rd<SD){SD=rd;S.set('sd',SD)}
  op=false;hap();render();
 }
 async function vStats(){
@@ -252,95 +545,410 @@ async function vStats(){
  const b=sm==='week'?mon(so):new Date(so.getFullYear(),so.getMonth(),1,12),n=sm==='week'?7:new Date(so.getFullYear(),so.getMonth()+1,0).getDate();
  const ds=[...Array(n)].map((_,i)=>add(b,i));
  await lrr(b,n);
- const val=f=>ds.map(d=>{const k=iso(d);return(+rep(k)[f]||0)+(f==='leads'?leadsOn(k):0)});
- const ne=ds.filter(d=>iso(d)<=T).length; // сколько дней периода уже наступило
- const cf=F.find(x=>x[0]===met)||F[0],v=val(cf[0]);
+ const AF=F.concat(CF.filter(c=>c.t!=='t').map(c=>['x:'+c.id,c.n,'',0])); // текстовые поля в статистику не идут
+ // день без сданного отчёта = null: он полностью пропускается (не нули), у пропущенных дней красная отметка
+ const val=f=>ds.map(d=>{const k=iso(d);if(!done(k))return null;return f.startsWith('x:')?(+(rep(k).x||{})[f.slice(2)]||0):(+rep(k)[f]||0)+(f==='leads'?nl(k):0)});
+ const cf=AF.find(x=>x[0]===met)||F[0],v=val(cf[0]),ok=v.filter(a=>a!==null);
  const title=sm==='week'?dm(iso(ds[0]),{day:'numeric',month:'short'})+' – '+dm(iso(ds[n-1]),{day:'numeric',month:'short'}):so.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
- const step=Math.ceil(n/8),w=340,hh=160,p=24,mx=Math.max(0,...v,1),mn=Math.min(0,...v);
+ const step=Math.ceil(n/8),w=340,hh=160,p=24,mx=Math.max(0,...ok,1),mn=Math.min(0,...ok);
  const X=i=>p+(n>1?i*(w-2*p)/(n-1):0),Y=a=>hh-p-((a-mn)/(mx-mn))*(hh-2*p);
- const vp=v.slice(0,ne);
+ const pts=v.map((a,i)=>a===null?null:[X(i),Y(a),!!rep(iso(ds[i])).late]).filter(Boolean);
  const svg=`<svg viewBox="0 0 ${w} ${hh}" style="width:100%"><line x1="${p}" x2="${w-p}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--hint)" opacity=".4"/>
- ${ne?`<polyline fill="none" stroke="var(--btn)" stroke-width="2.5" stroke-linejoin="round" points="${vp.map((a,i)=>X(i)+','+Y(a)).join(' ')}"/>`:''}
- ${vp.map((a,i)=>`<circle cx="${X(i)}" cy="${Y(a)}" r="${n>16?2:3.5}" fill="var(--btn)"/>`).join('')}
- ${ds.map((d,i)=>i%step===0?`<text x="${X(i)}" y="${hh-6}" font-size="10" text-anchor="middle" fill="var(--hint)">${d.getDate()}</text>`:'').join('')}
+ ${ds.map((d,i)=>missed(iso(d))?`<line x1="${X(i)}" x2="${X(i)}" y1="${p-6}" y2="${Y(0)}" stroke="var(--bad)" stroke-width="2" stroke-dasharray="3 3" opacity=".7"/><circle cx="${X(i)}" cy="${Y(0)}" r="${n>16?2.5:3.5}" fill="var(--bad)"/>`:'').join('')}
+ ${pts.length?`<polyline fill="none" stroke="var(--btn)" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(q=>q[0]+','+q[1]).join(' ')}"/>`:''}
+ ${pts.map(q=>`<circle cx="${q[0]}" cy="${q[1]}" r="${n>16?2.5:4}" fill="${q[2]?'var(--warn)':'var(--btn)'}" ${q[2]?'stroke="var(--btn)" stroke-width="1.5"':''}/>`).join('')}
+ ${ds.map((d,i)=>i%step===0?`<text x="${X(i)}" y="${hh-6}" font-size="10" text-anchor="middle" fill="${missed(iso(d))?'var(--bad)':'var(--hint)'}">${d.getDate()}</text>`:'').join('')}
  <text x="${p}" y="12" font-size="10" fill="var(--hint)">макс. ${fmt(mx)}</text></svg>`;
- // тренд: равные куски начала и конца уже прошедшей части периода
- const rows=F.map(([f,l,u])=>{const a=val(f),t=a.reduce((x,y)=>x+y,0),q=Math.floor(ne/2);
-  const s1=a.slice(0,q).reduce((x,y)=>x+y,0),s2=q?a.slice(ne-q,ne).reduce((x,y)=>x+y,0):0;
+ // всё считается только по дням со сданным отчётом; тренд — равные куски начала и конца этих дней
+ const dn=ok.length;
+ const avg=smode==='avg',f1=x=>x.toLocaleString('ru-RU',{maximumFractionDigits:1});
+ const rows=AF.map(([f,l,u])=>{const a=val(f).filter(x=>x!==null),t=a.reduce((x,y)=>x+y,0),q=Math.floor(a.length/2);
+  const s1=a.slice(0,q).reduce((x,y)=>x+y,0),s2=q?a.slice(a.length-q).reduce((x,y)=>x+y,0):0;
   const tr=!q?'<span class="n">▬</span>':s2>s1?'<span class="y">▲</span>':s2<s1?'<span class="x">▼</span>':'<span class="n">▬</span>';
-  return `<div class="m ${f===cf[0]?'on':''}" onclick="met='${f}';scrollTo(0,0);render()"><span>${l}</span><span><b>${fmt(t)}${u?' '+u:''}</b> ${tr}</span></div>`}).join('');
+  return `<div class="m ${f===cf[0]?'on':''}" onclick="met='${f}';scrollTo(0,0);render()"><span>${esc(l)}</span><span><b>${avg?f1(dn?t/dn:0):fmt(t)}${u?' '+u:''}</b> ${tr}</span></div>`}).join('');
  return `<div class="seg"><button class="${sm==='week'?'on':''}" onclick="sm='week';render()">Неделя</button><button class="${sm==='month'?'on':''}" onclick="sm='month';render()">Месяц</button></div>
+ <div class="seg"><button class="${!avg?'on':''}" onclick="smode='sum';render()">Общее</button><button class="${avg?'on':''}" onclick="smode='avg';render()">Среднее</button></div>
  <div class="nv"><button onclick="sv(-1)">◀</button><b>${title}</b><button onclick="sv(1)">▶</button></div>
- <div class="card"><b>${cf[1]}</b> <small>по дням</small>${svg}</div><small>Итого за период (нажмите на строку, чтобы увидеть график). Стрелка сравнивает начало и конец прошедшей части периода:</small><div style="margin-top:8px">${rows}</div>`;
+ <div class="card"><b>${esc(cf[1])}</b> <small>по дням</small>${svg}</div><small>${avg?`Среднее на день со сданным отчётом (таких дней: ${dn})`:`Итого по дням со сданным отчётом (таких дней: ${dn})`} (нажмите на строку, чтобы увидеть график). Дни без отчёта (красные на графике) не учитываются, жёлтые точки — отчёт сдан задним числом (в подсчёте участвует). Стрелка сравнивает начало и конец сданных дней:</small><div style="margin-top:8px">${rows}</div>`;
 }
 function sv(n){so=sm==='week'?add(so,7*n):new Date(so.getFullYear(),so.getMonth()+n,15,12);render()}
 
+// ---------- НЕДЕЛЬНЫЙ ОТЧЁТ (доступен только по воскресеньям) ----------
+let wm=false,wdp=[],wtp=[],dsq='',dss=null,dsa='',dsd=iso(new Date()),tsq='',tss=null,tsa='',tsd=iso(new Date()),LC={}; // меню депозитов/доливов в недельном отчёте
+const lnm=id=>(leads.find(l=>l.id===id)||{n:'(удалён)'}).n;
+const hasDep=id=>{const l=leads.find(x=>x.id===id);return !!(l&&l.dq)||wdp.some(x=>x.lid===id)};
+const lsearch=(q,f)=>{q=q.trim().toLowerCase().replace(/^@/,'');if(!q)return[];return leads.filter(l=>((l.n||'').toLowerCase().includes(q)||(l.tg||'').toLowerCase().replace(/^@/,'').includes(q))&&(!f||f(l))).slice(0,6)};
+function sres(k){
+ const q=k==='d'?dsq:tsq,L=lsearch(q,k==='t'?(l=>hasDep(l.id)):null);
+ return L.map(l=>`<div class="r" style="padding:10px 14px" onclick="pickL('${k}',${l.id})"><span><b>${esc(l.n)}</b><br><small>${esc(l.tg||'без юза')}</small></span></div>`).join('')
+  ||(q.trim()?`<div class="hint" style="margin:8px 0">Не найдено${k==='t'?' (нужен лид с депозитом)':''}</div>`:'');
+}
+async function pickL(k,id){const r=await S.get('l'+id);LC[id]=String((r&&r.city)||'').trim();if(k==='d'){dss=id;dsq=''}else{tss=id;tsq=''}render()}
+const lcard=(id,k)=>{const l=leads.find(x=>x.id===id);if(!l)return '';return `<div class="r" style="padding:10px 14px"><span>👤 <b>${esc(l.n)}</b><br><small>${esc(l.tg||'без юза')}${LC[id]?' · 📍 '+esc(LC[id]):''}</small></span><button class="del" onclick="${k==='d'?'dss':'tss'}=null;render()">✕</button></div>`};
+function wdCard(){
+ const row=(x,i,k)=>`<div class="r" style="padding:10px 14px"><span><b>${esc(lnm(x.lid))}</b> <small>${esc((leads.find(l=>l.id===x.lid)||{}).tg||'')}</small><br><small>${usd(x.a)} · ${dm(x.d,{day:'numeric',month:'long'})}</small></span><button class="del" onclick="${k}.splice(${i},1);render()">✕</button></div>`;
+ const pick=(k,q,sid)=>sid?lcard(sid,k):`<label class="fl">Имя или юз лида</label><input placeholder="Имя или @username" value="${esc(q)}" oninput="${k}sq=this.value;$('#${k}sr').innerHTML=sres('${k}')"><div id="${k}sr">${sres(k)}</div>`;
+ let h=`<div class="card"><div class="nv" style="margin:0"><b style="text-transform:none">💰 Депозиты и доливы</b><button class="sm" onclick="wm=!wm;render()">${wm?'✕':'➕'}</button></div>
+ <small>Попадут в профиль и в карточки лидов при сдаче отчёта.</small>`
+ +(wdp.length?`<label class="fl">Депозиты в этом отчёте</label>`+wdp.map((x,i)=>row(x,i,'wdp')).join(''):'')
+ +(wtp.length?`<label class="fl">Доливы в этом отчёте</label>`+wtp.map((x,i)=>row(x,i,'wtp')).join(''):'');
+ if(wm)h+=`<div class="card" style="background:var(--bg);margin-top:10px"><b>Депозит</b>${pick('d',dsq,dss)}
+  <label class="fl">Сумма, $</label><input type="number" step="any" inputmode="decimal" min="0" value="${esc(dsa)}" oninput="dsa=this.value">
+  <label class="fl">Дата</label><input type="date" value="${esc(dsd)}" oninput="dsd=this.value">
+  <button class="go" onclick="addWd()">Добавить депозит</button></div>
+  <div class="card" style="background:var(--bg)"><b>Доливы</b><br><small>Лид, который долил (у него уже должен быть депозит). Долив привяжется к его последнему депозиту.</small>${pick('t',tsq,tss)}
+  <label class="fl">Сумма, $</label><input type="number" step="any" inputmode="decimal" min="0" value="${esc(tsa)}" oninput="tsa=this.value">
+  <label class="fl">Дата</label><input type="date" value="${esc(tsd)}" oninput="tsd=this.value">
+  <button class="go" onclick="addWt()">Добавить долив</button></div>`;
+ return h+'</div>';
+}
+function addWd(){
+ if(!dss)return alertM('Выберите лида: найдите по имени или юзу');
+ const a=+dsa;if(!(a>0))return alertM('Введите сумму депозита больше нуля');
+ if(!dsd)return alertM('Укажите дату');
+ wdp.push({lid:dss,a:r2(a),d:dsd});dss=null;dsa='';dsq='';hap();render();
+}
+function addWt(){
+ if(!tss)return alertM('Выберите лида: найдите по имени или юзу');
+ if(!hasDep(tss))return alertM('У этого лида нет депозита');
+ const a=+tsa;if(!(a>0))return alertM('Введите сумму долива больше нуля');
+ if(!tsd)return alertM('Укажите дату');
+ wtp.push({lid:tss,a:r2(a),d:tsd});tss=null;tsa='';tsq='';hap();render();
+}
+async function applyWeekly(){ // записывает депозиты и доливы в карточки лидов; возвращает текст ошибки или null
+ const by={},get=async id=>by[id]||(by[id]=normDp(await S.get('ld'+id)));
+ for(const x of wdp){const D=await get(x.lid);D.push({id:nid(D),a:x.a,d:x.d,t:[]})}
+ for(const x of wtp){
+  const D=await get(x.lid);if(!D.length)return 'У лида «'+lnm(x.lid)+'» нет депозита для долива';
+  const ok=D.filter(z=>z.d<=x.d),L=(ok.length?ok:D).reduce((a,b)=>b.d>=a.d?b:a);
+  L.t.push([x.a,x.d]);
+ }
+ for(const id in by)if(JSON.stringify(by[id]).length>LIM)return 'Слишком много депозитов и доливов у лида «'+lnm(+id)+'»: не помещаются в хранилище';
+ for(const id in by){
+  if(!S.set('ld'+id,by[id]))return 'Не удалось сохранить депозиты';
+  const l=leads.find(z=>z.id==id),A=by[id];
+  if(l)l.dq=[r2(A.reduce((q,x)=>q+x.a,0)),A.length,r2(A.reduce((q,x)=>q+x.t.reduce((z,y)=>z+y[0],0),0)),A.reduce((q,x)=>q+x.t.length,0)];
+ }
+ lset('lx',leads);DC=null;return null;
+}
+const WR=[['avg','Средний актив за неделю'],['pm','Среднее количество пробивов'],['pt','Общее количество пробивов'],['of','Сколько было предлог'],['dp','Сколько было депозитов'],['ag','Количество согласов'],['rf','Количество отказов']];
+const WA=[['an1','Общая характеристика работы за неделю'],['an2','Что мешало дать результат'],['an3','Основные ошибки, которые вы выявили на этой неделе']];
+const WLIM=2000; // на каждую графу анализа; каждая хранится в своём ключе (fa/fb/fc), т.к. лимит ключа 4096
+const WKEYS=[['an1','fa'],['an2','fb'],['an3','fc']];
+async function getWk(w){const o=await S.get('f'+w);if(!o)return null;for(const [k,p] of WKEYS){const t=await S.get(p+w);if(typeof t==='string')o[k]=t}return o}
+const isSun=()=>new Date().getDay()===0; // только календарное воскресенье, до 23:59
+const nextSun=()=>{const d=now();while(d.getDay()!==0)d.setDate(d.getDate()+1);return iso(d)};
+const r1=x=>Math.round(x*10)/10;
+const wkRange=w=>dm(w,{day:'numeric',month:'long'})+' – '+dm(iso(add(D12(w),6)),{day:'numeric',month:'long'});
+async function vWeekly(){
+ const w=iso(mon(now())),fri=isSun(),sv=await getWk(w);
+ if(!wf||wf._w!==w){wf=Object.assign({},sv||{});wf._w=w}
+ await lrw(mon(now()));
+ const ds=[...Array(7)].map((_,i)=>iso(add(mon(now()),i))).filter(done),n=ds.length,sum=f=>ds.reduce((a,k)=>a+(+rep(k)[f]||0),0);
+ WH={avg:n?r1(sum('act')/n):0,pt:sum('prob'),pm:n?r1(sum('prob')/n):0,of:sum('offers')};
+ let h=`<div class="card"><b>📅 Недельный отчёт</b><br><small>Заполняется один раз в неделю. Открывается только в воскресенье, сдать его можно только до конца воскресенья (до 00:00).</small></div>`;
+ if(fri){
+  h+=`<div class="card"><b>Отчёт за ${wkRange(w)}</b>`+(sv?`<br><small style="color:var(--ok)">✅ Уже сдан, до конца воскресенья его можно обновить</small>`:`<br><small style="color:var(--warn)">⏳ Сдать можно только сегодня, до конца дня</small>`)
+   +(n?`<br><small>По дневным отчётам (дней: ${n}): средний актив ${WH.avg}, пробивов всего ${WH.pt} (в среднем ${WH.pm}), предлог ${WH.of}.</small><button class="sm" style="margin-top:6px" onclick="fillWk()">Подставить в пустые графы</button>`:'')
+   +WR.map(([k,l])=>`<label class="fl">${l} <span class="red">*</span></label><input type="number" step="any" inputmode="decimal" min="0" value="${esc(wf[k]??'')}" oninput="wf['${k}']=this.value">`).join('')+`</div>`
+   +wdCard()+`<div class="card"><b>Анализ работы</b><br><small><span class="red">*</span> — все графы обязательны.</small>`
+   +WA.map(([k,l])=>`<label class="fl">${l} <span class="red">*</span></label><textarea maxlength="${WLIM}" style="min-height:150px" oninput="wf['${k}']=this.value">${esc(wf[k]??'')}</textarea>`).join('')
+   +`<button class="go" onclick="saveWk()">💾 Сохранить недельный отчёт</button></div>`;
+ }else h+=`<div class="card">🔒 <b>Сегодня недельный отчёт недоступен.</b><br><small>Он открывается только в воскресенье. Ближайшее воскресенье: ${dm(nextSun(),{weekday:'long',day:'numeric',month:'long'})}.${sv?' Отчёт за эту неделю уже сдан.':''}</small></div>`;
+ const ks=(await S.keys()).filter(k=>/^f\d{4}-\d\d-\d\d$/.test(k)).sort().reverse().slice(0,12);
+ const L=[];for(const k of ks){const o=await getWk(k.slice(1));if(o)L.push([k.slice(1),o])}
+ h+=L.length?`<label class="fl">Сданные отчёты</label>`+L.map(([wk,o])=>`<div class="card"><b>${wkRange(wk)}</b><br><small>Средний актив ${fmt(o.avg||0)} · Пробивов: среднее ${fmt(o.pm||0)}, всего ${fmt(o.pt||0)} · Предлог ${fmt(o.of||0)} · Депозиты ${fmt(o.dp||0)} · Согласы ${fmt(o.ag||0)} · Отказы ${fmt(o.rf||0)}</small>`
+   +WA.map(([k,l])=>o[k]?`<br><small><b>${l}:</b> ${esc(o[k])}</small>`:'').join('')+`</div>`).join(''):'<div class="hint">Сданных недельных отчётов пока нет.</div>';
+ return h;
+}
+function fillWk(){const e=v=>v===undefined||v===null||String(v).trim()==='';['avg','pm','pt','of'].forEach(k=>{if(e(wf[k]))wf[k]=WH[k]});render()}
+async function saveWk(){
+ if(!isSun()){render();return alertM('Время вышло: недельный отчёт можно сдать только в воскресенье, до конца дня')}
+ const e=v=>v===undefined||v===null||String(v).trim()==='';
+ const miss=[...WR,...WA].filter(([k])=>e(wf[k])).map(x=>x[1]);
+ if(miss.length)return alertM('Заполните все графы: '+miss.join(', '));
+ const nd=wdp.length,nt=wtp.length;
+ if(nd||nt){const er=await applyWeekly();if(er)return alertM(er);wdp=[];wtp=[];wm=false}
+ const o={};WR.forEach(([k])=>o[k]=Math.max(0,+wf[k]||0));WA.forEach(([k])=>o[k]=String(wf[k]).trim().slice(0,WLIM));
+ o.sv=iso(now());
+ const wkk=iso(mon(now())),tx={};WKEYS.forEach(([k])=>{tx[k]=o[k];delete o[k]});
+ for(const [k,p] of WKEYS)if(!S.set(p+wkk,tx[k]))return;
+ if(!S.set('f'+wkk,o))return;
+ Object.assign(o,tx);
+ wf=Object.assign({},o);hap();alertM('Недельный отчёт сохранён'+(nd||nt?`. Депозитов добавлено: ${nd}, доливов: ${nt}`:''));render();
+}
+
 // ---------- ЛИДЫ ----------
-const overdue=l=>l.nx&&l.nx<=iso(now())&&(l.s==='Новый'||l.s==='В работе');
 function leadList(){
  const q=lq.trim().toLowerCase();
- const L=leads.filter(l=>(!lf||l.s===lf)&&(!q||(l.n||'').toLowerCase().includes(q)||(l.tg||'').toLowerCase().includes(q)))
-  .sort((a,b)=>overdue(b)-overdue(a));
- return L.map(l=>`<div class="r" onclick="openLead(${l.id})"><span><b>${esc(l.n)}</b><br><small>${esc(l.s)}${l.tg?' · '+esc(l.tg):''}</small>${l.nx?` <small class="${overdue(l)?'red':''}">· связаться ${dm(l.nx,{day:'numeric',month:'short'})}</small>`:''}</span></div>`).join('')
+ const L=leads.filter(l=>(!lf||l.s===lf)&&(!q||(l.n||'').toLowerCase().includes(q)||(l.tg||'').toLowerCase().includes(q)));
+ L.sort(SORTS[lsort]||SORTS.new);
+ return L.map(l=>`<div class="r" onclick="openLead(${l.id})"><span><b>${esc(l.n)}</b><br><small>${esc(l.s)}${l.tg?' · '+esc(l.tg):''}${lsort==='fill'?' · граф в «Работе»: '+(l.fw??'…'):''}</small>${l.cd===iso(now())?' <small style="color:var(--acc)">новый</small>':''}</span></div>`).join('')
   ||`<div class="hint">${leads.length?'Ничего не найдено.':'Лидов пока нет.'}</div>`;
 }
 function setLf(s){lf=s;render()}
 function vLeads(){
- if(lead){const ex=leads.some(l=>l.id===lead.id);
-  return `<div class="nv"><button onclick="lead=null;render()">◀ Назад</button><b>${ex?'Карточка':'Новый лид'}</b><span></span></div>
-  <label class="fl">Имя</label><input value="${esc(lead.n)}" oninput="lead.n=this.value">
-  <label class="fl">Telegram</label><input placeholder="@username" value="${esc(lead.tg)}" oninput="lead.tg=this.value">
-  <label class="fl">Телефон / контакт</label><input value="${esc(lead.ph)}" oninput="lead.ph=this.value">
+ if(lead){const ee=leads.find(l=>l.id===lead.id),ex=!!ee,FX=lead.fx||[],xs=FX.filter(c=>c.g==='x'),hx=xs.length>0,NB=`<label class="fl">Заметки</label><textarea maxlength="1500" oninput="lead.note=this.value">${esc(lead.note)}</textarea>`;
+  const HD=`<div class="nv"><button onclick="lead=null;render()">◀ Назад</button><b>${ex?'Карточка':'Новый лид'}</b><span></span></div><div class="seg"><button class="${lt==='g'?'on':''}" onclick="lt='g';render()">Общее</button><button class="${lt==='w'?'on':''}" onclick="lt='w';render()">Работа</button><button class="${lt==='d'?'on':''}" onclick="lt='d';render()">Депозиты</button></div>`;
+  if(lt==='d')return HD+depView()+`<button class="go" onclick="saveLead()">💾 Сохранить</button>`;
+  if(lt==='w')return HD+workView()+`<button class="go" onclick="saveLead()">💾 Сохранить</button>`;
+  return HD+`
+  <label class="fl">Имя <span class="red">*</span></label><input maxlength="40" value="${esc(lead.n)}" oninput="lead.n=this.value">
+  <label class="fl">Возраст</label><input type="number" inputmode="numeric" min="0" max="120" value="${esc(lead.age)}" oninput="lead.age=this.value">
+  <label class="fl">Работа</label><input maxlength="40" value="${esc(lead.job)}" oninput="lead.job=this.value">
+  <label class="fl">Место жительства</label><input maxlength="40" value="${esc(lead.city)}" oninput="lead.city=this.value">
+  <label class="fl">Юзер Telegram</label><input maxlength="32" placeholder="@username" value="${esc(lead.tg)}" oninput="lead.tg=this.value">
+  <label class="fl">Телефон</label><input maxlength="30" inputmode="tel" value="${esc(lead.ph)}" oninput="lead.ph=this.value">
+  <label class="fl">Telegram ID</label><input maxlength="15" inputmode="numeric" value="${esc(lead.tid)}" oninput="lead.tid=this.value">
+  <label class="fl">Дата добавления в базу</label><input disabled value="${dm(ee?ee.cd:iso(now()),{day:'numeric',month:'long',year:'numeric'})}${ex?'':' (проставится при сохранении)'}">
+  ${FX.filter(c=>c.g!=='x').map(lcInp).join('')}
+  ${hx?`<button class="go" style="background:var(--sec);color:var(--tx);margin:10px 0 6px" onclick="lxo=!lxo;render()">📂 Доп. поля ${lxo?'▴':'▾'}</button>${lxo?`<div class="card" style="background:var(--bg)">${xs.map(lcInp).join('')}${NB}</div>`:''}`:''}
+  <button class="go" style="background:var(--sec);color:var(--tx);margin:10px 0 6px" onclick="lco=!lco;render()">⚙️ Свои поля ${lco?'▴':'▾'}</button>${lco?lcfBox():''}
   <label class="fl">Статус</label><select onchange="lead.s=this.value">${LS.map(s=>`<option ${s===lead.s?'selected':''}>${s}</option>`).join('')}</select>
-  <label class="fl">Когда связаться в следующий раз</label><input type="date" value="${esc(lead.nx||'')}" oninput="lead.nx=this.value">
-  ${ex?`<div class="card" style="margin-top:10px"><small>Контактов: <b>${lead.cc||0}</b>${lead.lc?' · последний '+dm(lead.lc,{day:'numeric',month:'short'}):''}</small><button class="go" style="margin:8px 0 0" onclick="logContact()">📞 Был контакт сегодня (+1 в отчёт)</button></div>`:''}
-  <label class="fl">Заметки</label><textarea maxlength="1500" oninput="lead.note=this.value">${esc(lead.note)}</textarea>
-  <button class="go" onclick="saveLead()">💾 Сохранить</button>`+(ex?`<button class="go" style="background:#ff3b30" onclick="delLead()">Удалить</button>`:'');}
- return `<button class="go" style="margin-top:0" onclick="lead={id:Date.now(),n:'',tg:'',ph:'',s:'Новый',nx:'',lc:'',cc:0,note:''};render()">➕ Новый лид</button>
+  ${hx?'':NB}
+  <button class="go" onclick="saveLead()">💾 Сохранить</button>`+(ex?`<button class="go" style="background:var(--bad)" onclick="delLead()">Удалить</button>`:'');}
+ return `<button class="go" style="margin-top:0" onclick="newLead()">➕ Новый лид</button>
  <input placeholder="Поиск по имени или Telegram" value="${esc(lq)}" oninput="lq=this.value;$('#ll').innerHTML=leadList()">
+ <select onchange="lsort=this.value;$('#ll').innerHTML=leadList();if(lsort==='fill')ensureFc()">${[['new','Сначала новые'],['old','Сначала старые'],['abc','По алфавиту (А → Я)'],['fill','По заполненности «Работы» (больше → меньше)']].map(([v,t])=>`<option value="${v}" ${lsort===v?'selected':''}>${t}</option>`).join('')}</select>
  <div class="ch">${['',...LS].map(s=>`<button style="font-size:12px;padding:8px 0" class="${lf===s?'on':''}" onclick="setLf('${s}')">${s||'Все'}</button>`).join('')}</div>
  <div id="ll">${leadList()}</div>`;
 }
-async function openLead(id){lead=Object.assign({id,n:'',tg:'',ph:'',s:'Новый',nx:'',lc:'',cc:0,note:''},await S.get('l'+id));render()}
-function saveLead(){
+// ---- сортировка лидов ----
+const abc=(a,b)=>(a.n||'').localeCompare(b.n||'','ru');
+const SORTS={new:(a,b)=>(b.cd||'').localeCompare(a.cd||'')||b.id-a.id,old:(a,b)=>(a.cd||'').localeCompare(b.cd||'')||a.id-b.id,abc,fill:(a,b)=>(b.fw||0)-(a.fw||0)||abc(a,b)};
+// «заполненность» = число заполненных граф во вкладке «Работа»
+const fillCount=wk=>Object.keys(wk||{}).length;
+async function ensureFc(){ // у лидов без счётчика он считается один раз при первом выборе сортировки
+ const m=leads.filter(l=>l.fw===undefined);if(!m.length)return;
+ for(const l of m){const wk=Object.assign({},await S.get('lk'+l.id),await S.get('lm'+l.id));l.fw=fillCount(wk)}
+ lset('lx',leads);
+ if(tab==='l'&&!lead&&lsort==='fill'){const el=$('#ll');if(el)el.innerHTML=leadList()}
+}
+const LTXT=100; // длина текстовых своих полей лида
+const LD=()=>({n:'',age:'',job:'',city:'',tg:'',ph:'',tid:'',s:'В работе',lc:'',cc:0,note:'',fx:[]});
+// ---- вкладка «Работа»: информация, которую узнаём в процессе работы с лидом ----
+// [ключ, название, тип, лимит/варианты]; тип: t текст, a многострочный, n число, s выбор
+const WF=[
+['Трудоустройство',[['bp','Место рождения','t',40],['cz','Гражданство','t',30],['tz','Часовой пояс','t',20],['wt','Как давно работает','t',40],['em','Трудоустроен','s',['Официально','Неофициально']],['sal','Сколько зп в месяц','n'],['inc','Доп. источники дохода','a',150],['fl','Фин. нагрузка (примерный свободный остаток после обязательных расходов)','n']]],
+['Имущество',[['re','Недвижимость','a',150],['car','Автомобиль','a',150],['ast','Другие активы','a',150]]],
+['Кредитная история',[['cat','Отношение к кредитам','a',150],['al','Активные кредиты','a',200,1],['pl','Кредиты ранее','a',150],['mf','Микрозаймы','a',200,1],['ar','Аресты по банковским счетам','a',200,1],['dl','Просрочки по кредитам','a',200,1],['sv','Отложенные средства','n'],['bk','Банкротство','s',['Не было','Было','Есть'],1],['cp','Кредитный потенциал','n']],'Важный пункт'],
+['Увлечения',[['hb','Хобби','a',150],['tr','Путешествия','a',150]]],
+['Закрытие клиента',[['pn','Планы клиента на будущее','a',250],['ci','Ближайшее окружение','a',150],['hf','Помогает ли родным финансово','a',150],['dc','Решения принимает сам или советуется (с кем)','a',150],['nd','Потребность клиента','a',250]]],
+['О бирже',[['ti','Заинтересованность клиента в торговле','a',150],['ex','Опыт в сфере','a',150],['tp','На какие темы прогрет клиент','a',250],['rc','Реакции клиента на прогревы','a',250]]],
+['Об аналитике',[['an1','Что клиенту говорили об аналитике','a',250]]]];
+function setW(k,v){lead.wk=lead.wk||{};lead.wk[k]=v}
+const wInp=([k,l,t,m,r])=>{const v=(lead.wk||{})[k]??'';return `<label class="fl">${esc(l)}${r?' <span class="red">*</span>':''}</label>`+(
+ t==='s'?`<select onchange="setW('${k}',this.value)"><option value="">—</option>${m.map(o=>`<option ${v===o?'selected':''}>${o}</option>`).join('')}</select>`
+ :t==='n'?`<input type="number" inputmode="numeric" min="0" value="${esc(v)}" oninput="setW('${k}',this.value)">`
+ :t==='a'?`<textarea maxlength="${m}" style="min-height:70px" oninput="setW('${k}',this.value)">${esc(v)}</textarea>`
+ :`<input maxlength="${m}" value="${esc(v)}" oninput="setW('${k}',this.value)">`)};
+const workView=()=>`<div class="card" style="border-left:4px solid var(--bad)"><b>⚠️ Важно</b><br>Вся эта информация обязательна и требуется для качественного заполнения трубки на передаче. От этого зависит ваш заработок.</div>`
+ +WF.map(([t,fs,bd])=>`<div class="card"><b>${t}</b>${bd?` <span class="red">· ${bd}</span><br><small><span class="red">*</span> — обязательные пункты</small>`:''}${fs.map(wInp).join('')}</div>`).join('');
+
+const depView=()=>{
+ const D=lead.dp||[],sum=D.reduce((q,x)=>q+x.a,0),ts=D.reduce((q,x)=>q+x.t.reduce((z,y)=>z+y[0],0),0);
+ return `<div class="card"><b>💰 Депозиты лида</b><br><small>Депозиты и доливы добавляются только через недельный отчёт. Здесь их можно посмотреть и удалить ошибочные (после удаления нажмите «Сохранить»).</small></div>`
+ +(D.length?`<small style="display:block;margin:0 0 8px">Депозитов: ${D.length} на ${usd(sum)} · доливов на ${usd(ts)}</small>`:'<div class="hint">Депозитов пока нет.</div>')
+ +[...D].sort((a,b)=>b.d.localeCompare(a.d)||b.id-a.id).map(x=>{
+  const t=x.t.reduce((q,y)=>q+y[0],0);
+  return `<div class="card"><div class="nv" style="margin:0"><b style="text-transform:none">${usd(x.a)}</b><button class="del" onclick="delDep(${x.id})">✕</button></div>
+  <small>${dm(x.d,{day:'numeric',month:'long',year:'numeric'})}</small><br><small>Доливов: ${x.t.length}${x.t.length?' на '+usd(t):''}</small>`
+  +x.t.map((y,i)=>[y,i]).sort((a,b)=>b[0][1].localeCompare(a[0][1])).map(([y,i])=>`<div class="m" style="margin-top:6px"><span>${dm(y[1],{day:'numeric',month:'long'})}</span><span><b>${usd(y[0])}</b> <button class="del" style="font-size:16px" onclick="delTop(${x.id},${i})">✕</button></span></div>`).join('')
+  +`</div>`}).join('');
+};
+function delTop(id,i){const x=lead.dp.find(z=>z.id===id);if(x){x.t.splice(i,1);render()}}
+function delDep(id){ask('Удалить депозит вместе с его доливами?',()=>{lead.dp=lead.dp.filter(z=>z.id!==id);render()})}
+function newLead(){lead=Object.assign({id:Date.now()},LD());lead.wk={};lead.dp=[];resetDf();lt='g';lco=false;lxo=false;render()}
+async function openLead(id){lead=fixS(Object.assign({id},LD(),await S.get('l'+id)));lead.wk=Object.assign({},await S.get('lk'+id),await S.get('lm'+id));lead.dp=normDp(await S.get('ld'+id));resetDf();lt='g';lead.fx=Array.isArray(lead.fx)?lead.fx:[];
+ if(lead.x){LCF.forEach(c=>{const v=lead.x[c.id];if(v!==undefined&&v!==null&&String(v)!=='')lead.fx.push({id:c.id,n:c.n,t:c.t,g:c.g,v})});delete lead.x} // перенос старых общих полей в карточку лида
+ lco=false;lxo=false;render()}
+const lcInp=c=>`<label class="fl">${esc(c.n)}</label>`+(c.t==='t'?`<input maxlength="${LTXT}" value="${esc(c.v??'')}" oninput="setLx('${c.id}',this.value)">`:`<input type="number" inputmode="numeric" min="0" value="${esc(c.v??'')}" oninput="setLx('${c.id}',this.value)">`);
+function setLcg(g){lcg=g;render()}
+function setLx(id,v){const c=(lead.fx||[]).find(z=>z.id===id);if(c)c.v=v}
+function setLct(t){lct=t;render()}
+function lcfBox(){
+ return `<div class="card" style="background:var(--bg)"><b>Свои поля этого лида</b><br><small>Добавляются только в эту карточку (максимум ${MAXCF}). Не забудьте сохранить лида.</small>
+ <input maxlength="24" placeholder="Название нового поля" value="${esc(lcn)}" oninput="lcn=this.value" style="margin-top:8px">
+ <div class="ch" style="margin:4px 0"><button class="${lct==='n'?'on':''}" onclick="setLct('n')">🔢 Число</button><button class="${lct==='t'?'on':''}" onclick="setLct('t')">🔤 Текст</button></div>
+ <div class="ch" style="margin:4px 0"><button class="${lcg==='d'?'on':''}" onclick="setLcg('d')">Деф. поле</button><button class="${lcg==='x'?'on':''}" onclick="setLcg('x')">Доп. поле</button></div>
+ <small>«Доп. поля» уходят в отдельную раскрывающуюся группу вместе с заметками.</small>
+ <button class="go" style="margin:8px 0 8px" onclick="addLcf()">➕ Добавить поле</button>`
+ +((lead.fx||[]).map(c=>`<div class="r" style="background:var(--sec);padding:10px 14px"><span>${esc(c.n)} <small>· ${c.t==='t'?'текст':'число'} · ${c.g==='x'?'доп.':'деф.'}</small></span><button class="del" onclick="delLcf('${c.id}')">✕</button></div>`).join('')||'<small>Своих полей пока нет.</small>')+`</div>`;
+}
+function addLcf(){
+ const n=lcn.trim().slice(0,24);lead.fx=lead.fx||[];
+ if(!n)return alertM('Введите название поля');
+ if(lead.fx.length>=MAXCF)return alertM('Максимум '+MAXCF+' своих полей');
+ if(['Имя','Возраст','Работа','Место жительства','Юзер Telegram','Телефон','Telegram ID','Дата добавления в базу','Заметки',...lead.fx.map(c=>c.n)].some(x=>x.toLowerCase()===n.toLowerCase()))return alertM('Такое поле уже есть');
+ let id;do{id=Math.random().toString(36).slice(2,6)}while(!id||lead.fx.some(c=>c.id===id));
+ lead.fx.push({id,n,t:lct,g:lcg,v:''});
+ lcn='';if(lcg==='x')lxo=true;hap();render();
+}
+function delLcf(id){ask('Удалить поле вместе с его значением?',()=>{lead.fx=(lead.fx||[]).filter(c=>c.id!==id);render()})}
+async function saveLead(){
  if(!lead.n.trim())return alertM('Введите имя');
- const {id,...d}=lead,old=leads.find(l=>l.id===id);
+ if(!leads.some(l=>l.id===lead.id)&&(await S.keys()).length>900)return alertM('Хранилище почти заполнено (лимит ключей). Сделайте экспорт и удалите старых лидов.');
+ if(lead.age!==''&&!(+lead.age>=0&&+lead.age<=120))return alertM('Возраст: число от 0 до 120');
+ if(lead.tid&&!/^\d{1,15}$/.test(String(lead.tid).trim()))return alertM('Telegram ID — только цифры');
+ const {id,wk:_w,dp:_dp,...d}=lead,old=leads.find(l=>l.id===id);
+ ['n','age','job','city','tg','ph','tid'].forEach(f=>d[f]=String(d[f]??'').trim().slice(0,40));
+ d.fx=(lead.fx||[]).map(c=>{const v=c.v;return{id:c.id,n:c.n,t:c.t,g:c.g,v:v===undefined||v===null||String(v).trim()===''?'':(c.t==='t'?String(v).trim().slice(0,LTXT):Math.max(0,+v||0))}});
+ if(!d.fx.length)delete d.fx;
+ delete d.x;
+ const wks=[{},{}]; // главы 1–3 в ключе lk, остальные в lm (лимит размера записи)
+ WF.forEach(([,fs],ci)=>fs.forEach(([k,,t,m])=>{const v=(lead.wk||{})[k],w=wks[ci<3?0:1];if(v===undefined||v===null||String(v).trim()==='')return;
+  if(t==='n')w[k]=Math.max(0,+v||0);else if(t==='s'){if(m.includes(v))w[k]=v}else w[k]=String(v).trim().slice(0,m)}));
+ if(JSON.stringify(d).length>LIM)return alertM('Карточка слишком большая ('+JSON.stringify(d).length+' из '+LIM+' симв.). Сократите заметки или свои поля.');
+ if(wks.some(w=>JSON.stringify(w).length>LIM))return alertM('Вкладка «Работа» слишком большая. Сократите длинные тексты.');
+ const dps=(lead.dp||[]).map(x=>({id:x.id,a:x.a,d:x.d,t:x.t}));
+ if(JSON.stringify(dps).length>LIM)return alertM('Слишком много депозитов и доливов у одного лида: не помещаются в хранилище.');
+ const dsum=dps.reduce((q,x)=>q+x.a,0),tsum=dps.reduce((q,x)=>q+x.t.reduce((z,y)=>z+y[0],0),0),tcnt=dps.reduce((q,x)=>q+x.t.length,0);
+ for(let i=0;i<2;i++){const kk=(i?'lm':'lk')+id;if(Object.keys(wks[i]).length){if(!S.set(kk,wks[i]))return}else S.del(kk)}
  if(!S.set('l'+id,d))return;
- const e={id,n:lead.n.trim().slice(0,40),s:lead.s,tg:(lead.tg||'').trim().slice(0,32),cd:old?old.cd:iso(now()),nx:lead.nx||''};
+ if(dps.length){if(!S.set('ld'+id,dps))return}else S.del('ld'+id);
+ DC=null;
+ const e={id,n:lead.n.trim().slice(0,40),s:lead.s,tg:(lead.tg||'').trim().slice(0,32),cd:old?old.cd:iso(now()),fw:fillCount(Object.assign({},wks[0],wks[1]))};
+ if(dps.length)e.dq=[r2(dsum),dps.length,r2(tsum),tcnt];
  const i=leads.findIndex(l=>l.id===id);
  i<0?leads.unshift(e):leads[i]=e;lset('lx',leads);lead=null;hap();render();
 }
-async function logContact(){
- const t=now(),k=iso(t),w=iso(mon(t));await lrw(t);
- const o=R[w][k]||{};o.msg=(+o.msg||0)+1;R[w][k]=o;S.set('r'+w,R[w]);
- lead.lc=k;lead.cc=(lead.cc||0)+1;const {id,...d}=lead;S.set('l'+id,d);
- hap();render();
-}
-function delLead(){ask('Удалить лида?',()=>{S.del('l'+lead.id);leads=leads.filter(l=>l.id!==lead.id);lset('lx',leads);lead=null;render()})}
+function delLead(){ask('Удалить лида?',async()=>{
+ const id=lead.id,e=leads.find(l=>l.id===id);
+ if(e&&e.cd){await lrw(D12(e.cd));const w=wkOf(e.cd),r=R[w][e.cd];
+  if(r){r.lf=Math.max(r.lf||0,leadsOn(e.cd));S.set('r'+w,R[w])}}
+ S.del('l'+id);S.del('lk'+id);S.del('lm'+id);S.del('ld'+id);DC=null;leads=leads.filter(l=>l.id!==id);lset('lx',leads);lead=null;render()})}
 
 // ---------- ПРОФИЛЬ ----------
-function vProf(){
+function openBest(){pv='best';scrollTo(0,0);render()}
+// «Результат» месяца = депозиты + доливы в долларах (как «Тотал»); при равенстве — больше депозитов
+async function vBest(){
+ const L=await loadDeps(),M={},g=m=>M[m]||(M[m]={m,dc:0,ds:0,tc:0,ts:0});
+ L.forEach(x=>{const o=g(x.d.slice(0,7));o.dc++;o.ds+=x.a;x.t.forEach(y=>{const q=g(y[1].slice(0,7));q.tc++;q.ts+=y[0]})});
+ const A=Object.values(M).map(o=>Object.assign(o,{tot:o.ds+o.ts})).sort((a,b)=>b.tot-a.tot||b.dc-a.dc);
+ const mn=m=>{const[y,mo]=m.split('-').map(Number);return new Date(y,mo-1,15,12).toLocaleDateString('ru-RU',{month:'long',year:'numeric'})};
+ const HD=`<div class="nv"><button onclick="pv=null;render()">◀ Назад</button><b>Лучшая статистика</b><span></span></div>`;
+ if(!A.length)return HD+'<div class="hint">🏆 Пока нет депозитов.<br>Добавьте их в недельном отчёте, и здесь появится ваш лучший месяц.</div>';
+ const B=A[0],[y,mo]=B.m.split('-').map(Number),a=B.m+'-01',b=iso(new Date(y,mo,0,12)),n=new Date(y,mo,0).getDate();
+ await lrr(D12(a),n);
+ let calls=0,offers=0;
+ for(let i=0;i<n;i++){const k=iso(add(D12(a),i));if(done(k)){const r=rep(k);calls+=+r.calls||0;offers+=+r.offers||0}}
+ const score=calls>0?Math.round((Math.min(1,offers/calls)+(offers?Math.min(1,B.dc/offers):0))/2*100):null;
+ const now_=iso(now()).slice(0,7);
+ let h=HD+`<div class="best"><span class="em">🏆</span><div class="mo">${B.m===now_?'🔥 Лучший месяц сейчас':'Лучший месяц'}</div><div class="mo" style="font-size:15px;opacity:.85">${mn(B.m)}</div>
+ <div class="big">${usd(B.tot)}</div><small>депозиты и доливы вместе</small>
+ <div class="bs"><div><b>${B.dc}</b><small>депозитов</small></div><div><b>${B.tc}</b><small>доливов</small></div><div><b>${score===null?'—':score}</b><small>конверсия</small></div></div>
+ <small style="display:block;margin-top:10px">Депозиты ${usd(B.ds)} · доливы ${usd(B.ts)}${calls?` · трубок ${fmt(calls)}, предлогов ${fmt(offers)}`:''}</small></div>`;
+ if(A.length>1){
+  const medal=['🥈','🥉'];
+  h+=`<label class="fl">Другие месяцы</label>`+A.slice(1,6).map((o,i)=>`<div class="m"><span>${medal[i]||'▫️'} ${esc(mn(o.m))}<br><small>депозитов ${o.dc} · доливов ${o.tc}</small></span><span><b>${usd(o.tot)}</b></span></div>`).join('');
+ }else h+='<div class="hint">Пока это единственный месяц с депозитами. Поставьте рекорд!</div>';
+ return h;
+}
+let cvp='m'; // период конверсии: w неделя / m месяц / a всё время
+// Конверсия: трубки → предлоги → депозиты. Оценка = среднее двух шагов воронки:
+// (предлоги / трубки + депозиты / предлоги) / 2, каждый шаг не больше 100%.
+async function convCard(){
+ const T=now();let a,b;
+ if(cvp==='w'){a=iso(mon(T));b=iso(add(mon(T),6))}
+ else if(cvp==='m'){a=iso(new Date(T.getFullYear(),T.getMonth(),1,12));b=iso(new Date(T.getFullYear(),T.getMonth()+1,0,12))}
+ else{a=SD||iso(T);b=iso(T)}
+ const n=Math.max(1,dayDiff(b,a)+1);
+ await lrr(D12(a),n);
+ let calls=0,offers=0;
+ for(let i=0;i<n;i++){const k=iso(add(D12(a),i));if(done(k)){const r=rep(k);calls+=+r.calls||0;offers+=+r.offers||0}}
+ const dep=(await loadDeps()).filter(x=>x.d>=a&&x.d<=b).length;
+ const s1=calls?Math.min(1,offers/calls):0,s2=offers?Math.min(1,dep/offers):0;
+ const has=calls>0,score=has?Math.round((s1+s2)/2*100):null;
+ const col=score===null?'var(--sec)':score<40?'#FF4D6D':score<60?'#FF9A3D':score<80?'#FFD23F':'#1DBF73';
+ const lab=score===null?'нет данных':score<40?'слабо':score<60?'средне':score<80?'хорошо':'отлично';
+ const C=2*Math.PI*54,off=C*(1-(score||0)/100),pc=x=>Math.round(x*100)+'%';
+ const per=[['w','Неделя'],['m','Месяц'],['a','Всё время']];
+ return `<div class="card"><b>📈 Конверсия</b>
+ <div class="ch">${per.map(([v,l])=>`<button class="${cvp===v?'on':''}" onclick="cvp='${v}';render()">${l}</button>`).join('')}</div>
+ <div class="gauge"><svg viewBox="0 0 140 140" width="156" height="156"><circle cx="70" cy="70" r="54" fill="none" stroke="var(--sec)" stroke-width="14"/>${score>0?`<circle class="arc" cx="70" cy="70" r="54" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${C}" style="--c:${C};stroke-dashoffset:${off}" transform="rotate(-90 70 70)"/>`:''}</svg>
+ <div class="gc"><b>${score===null?'—':score}</b><small style="color:${score===null?'var(--hint)':col}">${lab}</small></div></div>
+ <div class="g3"><div><b>${fmt(calls)}</b><small>трубки</small></div><div><b>${fmt(offers)}</b><small>предлоги</small></div><div><b>${fmt(dep)}</b><small>депозиты</small></div></div>`
+ +(has?`<small style="display:block">Трубки → предлоги: <b>${pc(s1)}</b> · Предлоги → депозиты: <b>${pc(s2)}</b><br>Из трубок в депозит: <b>${pc(calls?dep/calls:0)}</b> · на 100 трубок: ${Math.round(offers/calls*100)} предлогов и ${Math.round(dep/calls*100)} депозитов</small>`
+  :'<small style="display:block">Нет трубок за этот период: заполните дневные отчёты, и здесь появится оценка.</small>')
+ +`<small style="display:block;margin-top:6px">Оценка — среднее двух шагов: предлоги÷трубки и депозиты÷предлоги. Красный до 40, оранжевый 40–59, жёлтый 60–79, зелёный от 80.</small></div>`;
+}
+async function vProf(){
+ if(pv==='best')return await vBest();
+ if(pv==='dep')return await vDepList();
+ if(pv==='det')return await vDepDet();
+ return vProfMain(await convCard(),(await S.keys()).length,await S.get('xd'));
+}
+function depTiles(){
+ let ds=0,dn=0,ts=0,tn=0;leads.forEach(l=>{const q=depSum(l);ds+=q.ds;dn+=q.dn;ts+=q.ts;tn+=q.tn});
+ return `<div class="dg"><div class="dt d1" onclick="openDepList()"><span class="em">💰</span><span class="t">💰 Депозиты</span><b>${dn}</b><span class="t">на ${usd(ds)} · история ›</span></div>
+ <div class="dt d2"><span class="em">📊</span><span class="t">📊 Тотал</span><b>${usd(ds+ts)}</b><span class="t">доливов: ${tn} на ${usd(ts)}</span></div></div>`;
+}
+function openDepList(){pv='dep';DC=null;scrollTo(0,0);render()}
+function openDepDet(lid,did){pvd={lid,did};pv='det';scrollTo(0,0);render()}
+async function loadDeps(){
+ if(DC)return DC;
+ const ls=leads.filter(l=>l.dq),arr=[],out=[];
+ for(let i=0;i<ls.length;i+=20)arr.push(...await Promise.all(ls.slice(i,i+20).map(async l=>[await S.get('ld'+l.id),await S.get('l'+l.id)])));
+ ls.forEach((l,i)=>{const c=String((arr[i][1]||{}).city||'').trim();normDp(arr[i][0]).forEach(d=>out.push(Object.assign({lid:l.id,n:l.n,c},d)))});
+ out.sort((a,b)=>b.d.localeCompare(a.d)||b.id-a.id);
+ return DC=out;
+}
+async function vDepList(){
+ const L=await loadDeps(),ds=L.reduce((q,x)=>q+x.a,0);
+ return `<div class="nv"><button onclick="pv=null;render()">◀ Назад</button><b>История депозитов</b><span></span></div>
+ <div class="card"><small>Депозитов: <b>${L.length}</b> · на сумму <b>${usd(ds)}</b></small></div>`
+ +(L.map(x=>{const t=x.t.reduce((q,y)=>q+y[0],0);
+  return `<div class="card" onclick="openDepDet(${x.lid},${x.id})"><div class="nv" style="margin:0"><b style="text-transform:none">${esc(x.n)}</b><b style="color:var(--ok)">${usd(x.a)}</b></div>
+  <small>${dm(x.d,{day:'numeric',month:'long',year:'numeric'})}</small>${x.c?`<br><small>📍 ${esc(x.c)}</small>`:''}<br><small>Доливов: ${x.t.length}${x.t.length?' на '+usd(t):''} ›</small></div>`}).join('')
+  ||'<div class="hint">Депозитов пока нет. Добавьте их в карточке лида, вкладка «Депозиты».</div>');
+}
+async function vDepDet(){
+ const L=await loadDeps(),x=L.find(z=>z.lid===pvd.lid&&z.id===pvd.did);
+ if(!x){pv='dep';return await vDepList()}
+ const t=x.t.reduce((q,y)=>q+y[0],0);
+ return `<div class="nv"><button onclick="pv='dep';render()">◀ Назад</button><b>Депозит</b><span></span></div>
+ <div class="card"><b style="font-size:18px">${esc(x.n)}</b><br><small>${dm(x.d,{day:'numeric',month:'long',year:'numeric'})}</small>${x.c?`<br><small>📍 ${esc(x.c)}</small>`:''}
+ <div class="g3" style="margin-top:10px"><div><b>${usd(x.a)}</b><small>депозит</small></div><div><b>${x.t.length}</b><small>доливов</small></div><div><b>${usd(t)}</b><small>долито</small></div></div>
+ <small>Всего с доливами: <b>${usd(x.a+t)}</b></small></div>`
+ +(x.t.length?[...x.t].sort((a,b)=>b[1].localeCompare(a[1])).map(y=>`<div class="m"><span>${dm(y[1],{day:'numeric',month:'long',year:'numeric'})}</span><span><b style="color:var(--ok)">+${usd(y[0])}</b></span></div>`).join(''):'<div class="hint">Доливов не было.</div>');
+}
+function vProfMain(cv,nk,xd){
  const k=rank(),pr=k.nx?(k.x-k.lo)/(k.nx-k.lo)*100:100,src=PH||tgu.photo_url;
- return `<input type="file" id="fi" accept="image/*" hidden onchange="pickPh(this.files[0])">
- ${src?`<img class="av" src="${esc(src)}" onclick="$('#fi').click()">`:`<div class="av" onclick="$('#fi').click()">${esc((P.n||'?')[0].toUpperCase())}</div>`}
+ const dk=curTh()==='dark',xa=xd?dayDiff(iso(now()),xd):null;
+ return `<button class="sm ed" onclick="${pe?'cancelProf()':'editProf()'}">${pe?'✕ Отмена':'✏️ Редактировать'}</button><button class="sm tro" onclick="openBest()" title="Лучшая статистика">🏆</button><div class="th ${dk?'dk':''}" onclick="toggleTheme()" title="Тема"><i>${dk?'🌙':'☀️'}</i></div><input type="file" id="fi" accept="image/*" hidden onchange="pickPh(this.files[0])">
+ ${src?`<img class="av" src="${esc(src)}" onclick="$('#fi').click()">`:`<div class="av" onclick="$('#fi').click()">${esc([...(P.n||'?')][0].toUpperCase())}</div>`}
  <div style="text-align:center;margin-bottom:12px"><b style="font-size:20px">${esc(P.n||'Без имени')}</b><br><small>${esc(P.team||'')} ${esc(P.tg||'')}</small></div>
- <div class="card"><div class="nv" style="margin:0 0 8px"><b>🏅 ${k.name}</b><small>Ранг ${k.i+1}</small></div><div class="pg" style="margin:0"><i style="width:${pr}%"></i></div>
+ <div class="card"><div class="nv" style="margin:0 0 8px"><b>${RE[k.i]||'🏅'} ${k.name}</b><small>Ранг ${k.i+1}</small></div><div class="pg" style="margin:0"><i style="width:${pr}%"></i></div>
  <small>${fmt(k.x)} RESPEKT${k.nx?` · до «${RK[k.i+1][1]}»: ${fmt(k.nx-k.x)}`:' · максимальный ранг'}</small></div>
- <div class="g3"><div><small>Депозиты</small><b>${fmt(ST.dep)}</b></div><div><small>Доливы</small><b>${fmt(ST.ref)}</b></div><div><small>Заработано</small><b>${fmt(ST.earn)}</b></div></div>
- <label class="fl">Имя</label><input value="${esc(P.n||'')}" oninput="P.n=this.value">
- <label class="fl">Команда</label><input value="${esc(P.team||'')}" oninput="P.team=this.value">
- <label class="fl">Telegram</label><input placeholder="@username" value="${esc(P.tg||'')}" oninput="P.tg=this.value">
- <button class="go" onclick="S.set('p',P);hap();render()">💾 Сохранить профиль</button>
+ ${depTiles()}${cv||''}
+ ${pe?profEdit():''}
+ <div class="card"><div class="nv" style="margin:0 0 8px"><b>💾 Хранилище</b><small>${nk} из 1000 записей</small></div><div class="pg" style="margin:0 0 8px"><i style="width:${Math.min(100,nk/10)}%;${nk>900?'background:var(--bad)':''}"></i></div><small>${nk>900?'Почти заполнено: сделайте экспорт и удалите старых лидов или скрины. ':''}Последний экспорт: ${xa===null?'ещё не делали':xa===0?'сегодня':xa+' дн. назад'}.${!cloud?' Вне Telegram данные лежат только в этом браузере и могут быть стёрты.':''}${xa===null||xa>7?' <span class="red">Рекомендуем сделать экспорт.</span>':''}</small></div>
  <label class="fl">Резервная копия</label>
  <button class="go" style="margin-top:0" onclick="expData()">📤 Экспорт данных</button>
  <textarea id="bk" placeholder="Здесь появится копия данных. Для импорта вставьте сюда ранее сохранённый текст."></textarea>
  <button class="go" style="background:var(--sec);color:var(--tx)" onclick="impData()">📥 Импорт из текста</button>
- <small>RESPEKT: задача ★×${RP_TASK}, цель ★×${RP_GOAL}, депозиты 1 за каждые ${RP_DEP}$, доливы 1 за каждые ${RP_REF}$. Задачи можно отмечать за сегодня и ${BACK} прошлых дн., будущие дни нельзя. Нажмите на фото, чтобы сменить.</small>`;
+ <small>RESPEKT: задача ★×${RP_TASK}, цель ★×${RP_GOAL}. Задачи можно отмечать за сегодня и ${BACK} прошлых дн., будущие дни нельзя. Нажмите на фото, чтобы сменить.</small>`;
+}
+let pe=false,PD={};
+function editProf(){PD={n:P.n||'',team:P.team||'',tg:P.tg||''};pe=true;render()}
+function cancelProf(){pe=false;render()}
+function profEdit(){return `<div class="card"><b>Редактирование профиля</b>
+ <label class="fl">Имя <span class="red">*</span></label><input maxlength="40" value="${esc(PD.n)}" oninput="PD.n=this.value">
+ <label class="fl">Команда</label><input maxlength="40" value="${esc(PD.team)}" oninput="PD.team=this.value">
+ <label class="fl">Telegram</label><input maxlength="32" placeholder="@username" value="${esc(PD.tg)}" oninput="PD.tg=this.value">
+ <div class="ch"><button onclick="cancelProf()">Отмена</button><button class="on" onclick="saveProf()">💾 Сохранить</button></div></div>`}
+function saveProf(){
+ const n=PD.n.trim();if(!n)return alertM('Введите имя');
+ let t=PD.tg.trim();if(t&&!t.startsWith('@'))t='@'+t;
+ const old=Object.assign({},P);
+ P.n=n.slice(0,40);P.team=PD.team.trim().slice(0,40);P.tg=t.slice(0,33);
+ if(!S.set('p',P)){Object.assign(P,old);return}
+ pe=false;hap();render();
 }
 function pickPh(f){
  if(!f)return;const im=new Image();
  im.onload=()=>{
-  const s=Math.min(im.width,im.height);let out=null;
+  URL.revokeObjectURL(im.src);const s=Math.min(im.width,im.height);let out=null;
   for(const sz of [64,48,40]){
    const c=document.createElement('canvas');c.width=c.height=sz;
    c.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,sz,sz);
@@ -354,8 +962,13 @@ function pickPh(f){
 }
 async function expData(){
  const ks=(await S.keys()).filter(k=>MYKEY.test(k)),o={};
- for(const k of ks){const v=await S.raw(k);if(v!==null)o[k]=v}
- const t=JSON.stringify(o),el=$('#bk');el.value=t;el.focus();el.select();
+ if(cloud&&tg.CloudStorage.getItems){
+  for(let i=0;i<ks.length;i+=50){const b=ks.slice(i,i+50);
+   const r=await new Promise(res=>tg.CloudStorage.getItems(b,(e,v)=>res(e?null:v)));
+   if(r){for(const k of b)if(r[k])o[k]=r[k]}
+   else for(const k of b){const v=await S.raw(k);if(v!==null)o[k]=v}}
+ }else for(const k of ks){const v=await S.raw(k);if(v!==null)o[k]=v}
+ const t=JSON.stringify(o),el=$('#bk');S.set('xd',iso(now()));el.value=t;el.focus();el.select();
  try{await navigator.clipboard.writeText(t);alertM('Скопировано в буфер обмена. Сохраните текст, например, в «Избранное».')}
  catch(_){alertM('Текст выделен в поле ниже: скопируйте его и сохраните.')}
 }
@@ -365,12 +978,14 @@ function impData(){
  const ks=Object.keys(o||{});
  if(!ks.length||ks.some(k=>!/^[A-Za-z0-9_-]{1,128}$/.test(k)||!MYKEY.test(k)||typeof o[k]!=='string'||o[k].length>LIM))return alertM('Файл копии повреждён или не подходит');
  ask(`Импортировать ${ks.length} записей? Совпадающие данные будут перезаписаны.`,async()=>{
-  ks.forEach(k=>S.setRaw(k,o[k]));
-  await new Promise(r=>setTimeout(r,600));
-  await init();alertM('Импорт завершён');
+  const rs=await Promise.all(ks.map(k=>S.setP(k,o[k])));
+  await init();alertM(rs.every(Boolean)?'Импорт завершён':'Импорт завершён с ошибками: часть записей не сохранилась');
  });
 }
 
+// ---------- доступность: кликабельные div/span получают role=button и работают с клавиатуры ----------
+function a11y(root){if(root)root.querySelectorAll('[onclick]').forEach(e=>{if(!/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(e.tagName)&&!e.hasAttribute('tabindex')){e.setAttribute('role','button');e.tabIndex=0}})}
+document.addEventListener('keydown',e=>{const t=e.target;if((e.key==='Enter'||e.key===' ')&&t.getAttribute&&t.getAttribute('role')==='button'){e.preventDefault();t.click()}});
 // ---------- запуск ----------
 let rn=0;
 async function render(){
@@ -378,19 +993,23 @@ async function render(){
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
  const html=await({t:vTasks,r:vReport,l:vLeads,p:vProf}[tab])();
  if(my!==rn)return;
- $('#app').innerHTML=html;
+ $('#app').innerHTML=((tab==='p'||(tab==='l'&&lead))?'':hdr())+html;lastTog=null;iconize($('#app'));a11y($('#app'));
 }
 async function init(){
- R={};W={};LEG={};
- const a=await Promise.all(['p','st','ph'].map(k=>S.get(k)));
+ R={};W={};LEG={};DC=null;
+ const a=await Promise.all(['p','st','ph','cf','sd','lcf','th'].map(k=>S.get(k)));
+ CF=(Array.isArray(a[3])?a[3]:[]).filter(c=>c&&/^[a-z0-9]{1,8}$/i.test(c.id)&&typeof c.n==='string'&&(c.t==='n'||c.t==='t'));SD=typeof a[4]==='string'?a[4]:null;
+ LCF=(Array.isArray(a[5])?a[5]:[]).filter(c=>c&&/^[a-z0-9]{1,8}$/i.test(c.id)&&typeof c.n==='string'&&(c.t==='n'||c.t==='t')).map(c=>({id:c.id,n:c.n,t:c.t,g:c.g==='x'?'x':'d'}));
+ TH=a[6]==='light'||a[6]==='dark'?a[6]:null;applyTh();
  P=a[0]||{};ST=Object.assign({dep:0,ref:0,earn:0,xt:0,xg:0},a[1]);PH=a[2];
  if(!ST.v){ // перевод старых XP в новую, более скромную шкалу RESPEKT
   ST.xt=Math.round(ST.xt/10);ST.xg=Math.round(ST.xg/2.5);ST.v=2;S.set('st',ST);
  }
- tasks=await lget('tasks');goals=await lget('goals');leads=await lget('lx');
+ tasks=await lget('tasks');goals=await lget('goals');leads=(await lget('lx')).map(fixS);
  if(P.n===undefined)P.n=tgu.first_name||'';
  if(P.tg===undefined&&tgu.username)P.tg='@'+tgu.username;
  render();
 }
+iconize(document.querySelector('nav'));
 init();
 </script></body></html>
